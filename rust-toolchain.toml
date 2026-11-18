@@ -1,0 +1,4 @@
+# Pinned development toolchain; rust-version in Cargo.toml matches it.
+[toolchain]
+channel = "1.94.1"
+components = ["rustfmt", "clippy"]

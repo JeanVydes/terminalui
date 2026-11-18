@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned toolchain
+        uses: dtolnay/rust-toolchain@1.94.1
         with:
           components: rustfmt, clippy
       - name: Cache cargo artifacts
@@ -30,14 +30,3 @@ jobs:
         run: cargo doc --workspace --no-deps
       - name: Package check
         run: cargo package --workspace --allow-dirty --no-verify
-
-  msrv:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install rust 1.88.0
-        uses: dtolnay/rust-toolchain@1.76.0
-        with:
-          components: rustfmt, clippy
-      - name: Check with MSRV
-        run: cargo check --workspace
