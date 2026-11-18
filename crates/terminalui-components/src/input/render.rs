@@ -65,9 +65,24 @@ pub(super) fn paint(
     let max_text = inner.width.saturating_sub(padding_x + 1) as usize;
     let value = &input.state.value;
 
-    if value.is_empty() && !input.state.focused {
-        let rect = Rect::new(inner.x, text_y, inner.width, 1);
+    if value.is_empty() {
+        let rect = Rect::new(inner.x + 1, text_y, inner.width.saturating_sub(2), 1);
         row(&mut input.placeholder, rect, Align::Left, 1, buf, cx, theme);
+        if input.state.focused && !input.state.disabled {
+            let caret_y = if input.multiline { inner.y } else { text_y };
+            draw_caret(
+                input,
+                buf,
+                CaretArgs {
+                    x: inner.x + 1,
+                    y: caret_y,
+                    cell_selected: false,
+                    theme,
+                    accent: cursor_color,
+                    text_color,
+                },
+            );
+        }
         return;
     }
 

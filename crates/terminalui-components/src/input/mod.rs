@@ -208,6 +208,11 @@ impl Input {
         self.state.scroll_x = 0;
     }
 
+    /// The current text.
+    pub fn value(&self) -> &str {
+        &self.state.value
+    }
+
     /// The ordered selection range in chars, if any.
     pub fn selection(&self) -> Option<(usize, usize)> {
         let anchor = self.state.anchor?;
