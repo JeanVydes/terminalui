@@ -1,0 +1,18 @@
+[package]
+name = "terminalui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Facade crate for the terminalui toolkit: core runtime, animations and components re-exported in one place"
+readme = "README.md"
+
+[dependencies]
+terminalui-core = { workspace = true }
+terminalui-components = { workspace = true }
+terminalui-animations = { workspace = true }

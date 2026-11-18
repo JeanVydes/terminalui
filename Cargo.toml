@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/terminalui-core",
+    "crates/terminalui",
+    "crates/terminalui-components",
+    "crates/terminalui-animations",
+    "example-app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88.0"
+license = "MIT"
+authors = ["Jean Vides <contact@jeanvides.com>"]
+repository = "https://github.com/JeanVydes/terminalui"
+documentation = "https://docs.rs/terminalui"
+keywords = ["tui", "ratatui", "components", "terminal", "ui"]
+categories = ["command-line-interface"]
+
+[workspace.dependencies]
+terminalui = { version = "0.1.0", path = "crates/terminalui" }
+terminalui-core = { version = "0.1.0", path = "crates/terminalui-core" }
+terminalui-animations = { version = "0.1.0", path = "crates/terminalui-animations" }
+terminalui-components = { version = "0.1.0", path = "crates/terminalui-components" }

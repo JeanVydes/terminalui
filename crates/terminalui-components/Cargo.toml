@@ -1,0 +1,23 @@
+[package]
+name = "terminalui-components"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Ready-made components for terminalui: buttons, inputs, tables, charts, dialogs, toasts and more"
+readme = "README.md"
+
+[dependencies]
+terminalui-core = { workspace = true }
+terminalui-animations = { workspace = true }
+crossterm = "0.29"
+ratatui = "0.29"
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

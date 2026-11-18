@@ -1,0 +1,16 @@
+[package]
+name = "example-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Example application showcasing terminalui components"
+
+[dependencies]
+crossterm = "0.29"
+ratatui = "0.29"
+serde_json = "1"
+terminalui = { workspace = true }
