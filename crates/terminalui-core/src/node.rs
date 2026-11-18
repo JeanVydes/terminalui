@@ -13,6 +13,10 @@ pub struct Node {
     pub id: String,
     /// The view itself.
     pub view: Box<dyn crate::view::View>,
+    /// Hidden nodes keep their state and stay queryable, but they get no
+    /// events, no focus slot and no ticks. Containers set this to model
+    /// visibility without unmounting their children.
+    pub(crate) hidden: bool,
 }
 
 impl Node {
@@ -27,10 +31,11 @@ impl Serialize for Node {
     where
         S: Serializer,
     {
-        let mut node = serializer.serialize_struct("Node", 3)?;
+        let mut node = serializer.serialize_struct("Node", 4)?;
         node.serialize_field("id", &self.id)?;
         node.serialize_field("kind", self.view.kind())?;
         node.serialize_field("view", &ErasedView(&*self.view))?;
+        node.serialize_field("hidden", &self.hidden)?;
         node.end()
     }
 }
@@ -54,5 +59,6 @@ pub fn node<V: crate::view::View + 'static>(id: impl Into<String>, view: V) -> N
     Node {
         id: id.into(),
         view: Box::new(view),
+        hidden: false,
     }
 }

@@ -59,6 +59,9 @@ pub trait View: Any + erased_serde::Serialize {
     /// to every child, so containers only override when they own animation.
     fn tick(&mut self, delta: Duration, cx: &mut Context) {
         for child in self.children_mut() {
+            if child.hidden {
+                continue;
+            }
             child.view.tick(delta, cx);
         }
     }

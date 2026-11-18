@@ -200,6 +200,9 @@ struct SerializableTree<'a> {
 }
 
 fn count_focusable(node: &Node) -> usize {
+    if node.hidden {
+        return 0;
+    }
     usize::from(node.view.focusable())
         + node
             .view
@@ -210,6 +213,9 @@ fn count_focusable(node: &Node) -> usize {
 }
 
 fn collect_focusable<'a>(node: &'a Node, out: &mut Vec<&'a str>) {
+    if node.hidden {
+        return;
+    }
     if node.view.focusable() {
         out.push(&node.id);
     }
@@ -223,6 +229,9 @@ fn find_focusable_mut_at<'a>(
     index: usize,
     counter: &mut usize,
 ) -> Option<&'a mut Node> {
+    if node.hidden {
+        return None;
+    }
     if node.view.focusable() {
         if *counter == index {
             return Some(node);
@@ -320,6 +329,9 @@ fn dispatch(node: &mut Node, event: &InputEvent, cx: &mut Context) -> Outcome {
     let own = node.view.handle_event(event, cx);
     let mut consumed = own == Outcome::Consumed;
     for child in node.view.children_mut() {
+        if child.hidden {
+            continue;
+        }
         if dispatch(child, event, cx) == Outcome::Consumed {
             consumed = true;
         }

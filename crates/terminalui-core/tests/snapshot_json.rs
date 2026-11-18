@@ -21,10 +21,12 @@ fn tree_serializes_to_the_documented_shape() {
         json!({
             "focus": null,
             "root": {
+                "hidden": false,
                 "id": "root",
                 "kind": "stack",
                 "view": {
                     "children": [{
+                        "hidden": false,
                         "id": "label",
                         "kind": "text",
                         "view": {
