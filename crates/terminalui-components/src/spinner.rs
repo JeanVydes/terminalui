@@ -14,10 +14,14 @@ use terminalui_core::{node, Context, Node, Outcome, Text, View};
 use super::layout::{row, Align};
 use super::presentation::RenderStyle;
 
+/// Public state of the spinner: area, frame index and elapsed time.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SpinnerState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Index of the current animation frame.
     pub frame: usize,
+    /// Time elapsed since the spinner was created.
     pub elapsed: Duration,
 }
 
@@ -30,11 +34,14 @@ pub struct SpinnerStyle {
     pub interval_ms: Option<u64>,
 }
 
+/// A rotating glyph, optionally with composed views next to it.
 #[derive(Serialize)]
 pub struct Spinner {
     /// Which glyph set to draw. Defaults to [`RenderStyle::Native`].
     pub presentation: RenderStyle,
+    /// Per-instance overrides; defaults match the theme.
     pub style: SpinnerStyle,
+    /// Public state: area, frame index and elapsed time.
     pub state: SpinnerState,
     children: Vec<Node>,
 }
@@ -47,6 +54,7 @@ impl Spinner {
     }
 }
 impl Spinner {
+    /// Creates a spinner.
     pub fn new() -> Self {
         Self {
             presentation: RenderStyle::Native,
@@ -66,11 +74,13 @@ impl Spinner {
         self
     }
 
+    /// Builder shorthand: pick the glyph set.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: SpinnerStyle) -> Self {
         self.style = style;
         self

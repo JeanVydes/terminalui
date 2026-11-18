@@ -22,24 +22,38 @@ use super::layout::column;
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum FloatingPosition {
+    /// Top-left corner.
     TopLeft,
+    /// Top edge, horizontally centered.
     TopCenter,
+    /// Top-right corner.
     TopRight,
+    /// Left edge, vertically centered.
     CenterLeft,
+    /// Center of the area.
     #[default]
     Center,
+    /// Right edge, vertically centered.
     CenterRight,
+    /// Bottom-left corner.
     BottomLeft,
+    /// Bottom edge, horizontally centered.
     BottomCenter,
+    /// Bottom-right corner.
     BottomRight,
+    /// Free position; clamped to keep the box inside its area.
     Coordinates {
+        /// Horizontal offset of the box's left edge, in cells.
         x: u16,
+        /// Vertical offset of the box's top edge, in cells.
         y: u16,
     },
 }
 
+/// Public state of the box: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct FloatingState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -47,6 +61,7 @@ pub struct FloatingState {
 /// radius and padding. Defaults to a filled, unbordered box.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct FloatingStyle {
+    /// Chrome (fill, border, radius, padding) of the box.
     pub chrome: Chrome,
 }
 
@@ -62,15 +77,19 @@ impl Default for FloatingStyle {
 /// pass arbitrary views (text, badges, buttons) as children.
 #[derive(Serialize)]
 pub struct FloatingBox {
+    /// Box width in cells.
     pub width: u16,
+    /// Where the box anchors inside its area.
     pub position: FloatingPosition,
+    /// Per-instance chrome configuration.
     pub style: FloatingStyle,
+    /// Public state: the last rendered area.
     pub state: FloatingState,
     children: Vec<Node>,
 }
 
 impl FloatingBox {
-    /// title styling included. The title renders in the accent color.
+    /// Convenience constructor: a bold title line in the accent color plus body lines.
     pub fn with_title_body(title: impl Into<String>, body: Vec<impl Into<String>>) -> Self {
         let mut children = vec![node(
             "title",
@@ -98,21 +117,24 @@ impl FloatingBox {
         }
     }
 
-    /// Convenience constructor: a title line plus body [`Text`] lines, all bold
+    /// Builder shorthand: set the box width in cells; clamped to at least 8.
     pub fn with_width(mut self, width: u16) -> Self {
         self.width = width.max(8);
         self
     }
 
+    /// Builder shorthand: anchor the box to a floating position.
     pub fn with_position(mut self, position: FloatingPosition) -> Self {
         self.position = position;
         self
     }
 
+    /// Move the box to a floating position.
     pub fn set_position(&mut self, position: FloatingPosition) {
         self.position = position;
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: FloatingStyle) -> Self {
         self.style = style;
         self

@@ -14,11 +14,14 @@ use terminalui_core::{node, Context, Node, Outcome, Text, View};
 use super::layout::{row, Align};
 use super::presentation::{RenderStyle, StyleTuning};
 
+/// Public state of the bar: area, eased value and elapsed time.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ProgressState {
+    /// Last rendered area, set during render.
     pub area: Rect,
     /// Eased value in 0.0..=1.0 for smooth rendering.
     pub value: f64,
+    /// Milliseconds elapsed since the bar was created.
     pub elapsed: Duration,
 }
 
@@ -33,6 +36,7 @@ pub struct ProgressStyle {
     pub interval_ms: Option<u64>,
 }
 
+/// A progress bar: determinate fill or an indeterminate sweeping band.
 #[derive(Serialize)]
 pub struct Progress {
     /// Target value in 0.0..=1.0. The bar animates toward this smoothly.
@@ -44,7 +48,9 @@ pub struct Progress {
     /// Shading knobs for non-`Native` presentations. Defaults to a 4-level
     /// halftone ramp at neutral contrast.
     pub tuning: StyleTuning,
+    /// Per-instance overrides; defaults match the theme.
     pub style: ProgressStyle,
+    /// Public state: area, eased value and elapsed time.
     pub state: ProgressState,
     children: Vec<Node>,
 }
@@ -83,6 +89,7 @@ impl Progress {
         }
     }
 
+    /// Builder shorthand: set the target value; clamped to `0.0..=1.0`.
     pub fn with_value(mut self, value: f64) -> Self {
         self.value = value.clamp(0.0, 1.0);
         self
@@ -94,16 +101,19 @@ impl Progress {
         self
     }
 
+    /// Builder shorthand: pick the glyph set that draws the track.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self
     }
 
+    /// Builder shorthand: set the shading knobs for non-`Native` presentations.
     pub fn with_tuning(mut self, tuning: StyleTuning) -> Self {
         self.tuning = tuning;
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: ProgressStyle) -> Self {
         self.style = style;
         self

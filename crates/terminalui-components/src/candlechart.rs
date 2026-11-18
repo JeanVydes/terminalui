@@ -41,9 +41,12 @@ fn caption_width(children: &[Node]) -> u16 {
     measured + 2 * (children.len() as u16) + 2
 }
 
+/// Public state of the chart: area, focus, scroll and zoom.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ChartState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the chart would hold focus by the tree. Charts are display-only.
     pub focused: bool,
     /// Candles scrolled back from the live edge. Zero = following the live candle.
     pub scroll_back: usize,
@@ -53,12 +56,18 @@ pub struct ChartState {
     pub y_zoom: f64,
 }
 
+/// One OHLC candle plus its volume.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Candle {
+    /// Opening price.
     pub open: f64,
+    /// Highest price.
     pub high: f64,
+    /// Lowest price.
     pub low: f64,
+    /// Closing price.
     pub close: f64,
+    /// Traded volume, used by the optional volume band.
     pub volume: f64,
 }
 
@@ -92,9 +101,12 @@ where
     serializer.serialize_bool(label.is_some())
 }
 
+/// A candlestick chart with volume bars, scrollback and zoom.
 #[derive(Serialize)]
 pub struct CandleChart {
+    /// Public state: area, focus, scroll and zoom.
     pub state: ChartState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: CandleChartStyle,
     /// How the chart paints itself (Native, Blocks, Ascii, …).
     pub presentation: RenderStyle,
@@ -111,6 +123,7 @@ pub struct CandleChart {
 }
 
 impl CandleChart {
+    /// Creates an empty chart.
     pub fn new() -> Self {
         Self {
             state: ChartState {
@@ -129,16 +142,19 @@ impl CandleChart {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: CandleChartStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: pick the presentation.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self
     }
 
+    /// Builder shorthand: set the shading knobs for non-`Native` presentations.
     pub fn with_tuning(mut self, tuning: StyleTuning) -> Self {
         self.tuning = tuning;
         self
@@ -150,6 +166,7 @@ impl CandleChart {
         self
     }
 
+    /// Builder shorthand: set the injected x-axis label source (absolute candle index to label).
     pub fn with_x_label(mut self, label: impl Fn(usize) -> String + 'static) -> Self {
         self.set_x_label(label);
         self
@@ -189,10 +206,12 @@ impl CandleChart {
         }
     }
 
+    /// Number of candles currently held.
     pub fn len(&self) -> usize {
         self.series.len()
     }
 
+    /// `true` when there is nothing to draw.
     pub fn is_empty(&self) -> bool {
         self.series.is_empty()
     }

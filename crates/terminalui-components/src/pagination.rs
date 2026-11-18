@@ -12,9 +12,12 @@ use terminalui_core::{node, Context, Node, Outcome, Text, View};
 
 use super::icons::Icon;
 
+/// Public state of the pager: area, focus and current page.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PaginationState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the pager would hold focus by the tree.
     pub focused: bool,
     /// Current page, zero-based.
     pub page: usize,
@@ -42,10 +45,13 @@ pub struct PaginationStyle {
 /// page is active.
 #[derive(Serialize)]
 pub struct Pagination {
+    /// Total number of pages; always at least 1.
     pub total_pages: usize,
     /// Consecutive page numbers shown around the current page. Default 5.
     pub max_visible_pages: usize,
+    /// Public state: area, focus and current page.
     pub state: PaginationState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: PaginationStyle,
     children: Vec<Node>,
     hit_areas: Vec<(HitTarget, Rect)>,
@@ -80,12 +86,14 @@ impl Pagination {
         }
     }
 
+    /// Creates a pager with the given pages and the current page set to `page`.
     pub fn with_page(total_pages: usize, page: usize) -> Self {
         let mut pagination = Self::new(total_pages);
         pagination.go_to(page);
         pagination
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: PaginationStyle) -> Self {
         self.style = style;
         self
@@ -102,6 +110,7 @@ impl Pagination {
         self.state.page
     }
 
+    /// Go to the given page; out-of-range clamps to the last page.
     pub fn go_to(&mut self, page: usize) {
         self.state.page = page.min(self.total_pages - 1);
     }

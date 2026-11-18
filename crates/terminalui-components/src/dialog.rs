@@ -48,9 +48,12 @@ impl Default for DialogStyle {
     }
 }
 
+/// Public state of the dialog: whether it is open and where it rendered.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DialogState {
+    /// Whether the dialog is currently presented.
     pub is_open: bool,
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -59,8 +62,11 @@ pub struct DialogState {
 /// stacked vertically.
 #[derive(Serialize)]
 pub struct Dialog {
+    /// Public state: whether the dialog is open and where it rendered.
     pub state: DialogState,
+    /// The dimming overlay behind the content box.
     pub overlay: Overlay,
+    /// Per-instance overrides; defaults match the theme.
     pub style: DialogStyle,
     children: Vec<Node>,
 }
@@ -112,6 +118,7 @@ impl Dialog {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: DialogStyle) -> Self {
         self.style = style;
         self
@@ -123,14 +130,17 @@ impl Dialog {
         self
     }
 
+    /// Open the dialog.
     pub fn open(&mut self) {
         self.state.is_open = true;
     }
 
+    /// Close the dialog.
     pub fn close(&mut self) {
         self.state.is_open = false;
     }
 
+    /// Whether the dialog is currently open.
     pub fn is_open(&self) -> bool {
         self.state.is_open
     }

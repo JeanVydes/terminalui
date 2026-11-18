@@ -13,14 +13,18 @@ use terminalui_core::input::InputEvent;
 use terminalui_core::theme::Theme;
 use terminalui_core::{node, Context, Node, Outcome, Text, View};
 
+/// Public state of the group: area, cursor, offset, focus and disabled.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RadioState {
+    /// Last rendered area, set during render.
     pub area: Rect,
     /// Option the keyboard and mouse point at.
     pub cursor: usize,
     /// First visible option when the list overflows.
     pub offset: usize,
+    /// Whether the group would hold focus by the tree.
     pub focused: bool,
+    /// Whether interaction is disabled.
     pub disabled: bool,
 }
 
@@ -43,7 +47,9 @@ pub struct RadioStyle {
 /// reported through [`RadioGroup::selected`].
 #[derive(Serialize)]
 pub struct RadioGroup {
+    /// Public state: area, cursor, offset, focus and disabled.
     pub state: RadioState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: RadioStyle,
     /// Active option, if any has been picked.
     pub selected: Option<usize>,
@@ -79,6 +85,7 @@ impl RadioGroup {
         }
     }
 
+    /// Builder shorthand: pre-select the given option index.
     pub fn with_selected(mut self, selected: usize) -> Self {
         if selected < self.children.len() {
             self.selected = Some(selected);
@@ -87,11 +94,13 @@ impl RadioGroup {
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: RadioStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: disable or enable interaction.
     pub fn with_disabled(mut self, disabled: bool) -> Self {
         self.state.disabled = disabled;
         self

@@ -16,3 +16,8 @@ readme = "README.md"
 terminalui-core = { workspace = true }
 terminalui-components = { workspace = true }
 terminalui-animations = { workspace = true }
+
+[dev-dependencies]
+crossterm = "0.29"
+ratatui = { version = "0.29", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }

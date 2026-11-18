@@ -1,23 +1,13 @@
 # terminalui
 
-A retained-mode, composable view tree for the terminal, built on ratatui.
-
-Terminal UI apps are usually a handful of stateful widgets and a dispatch
-loop glued together by hand. terminalui gives them a real tree: typed views,
-focus management, events, layout, and ready-made components, so the structure
-of a screen can be declared once and reused.
+Terminal UIs as a typed, composable view tree, built on ratatui.
 
 ## Install
 
-Add `terminalui` to your `Cargo.toml`:
-
 ```toml
 [dependencies]
-terminalui = "0.1"
+terminalui = { git = "https://github.com/JeanVydes/terminalui" }
 ```
-
-`terminalui` re-exports the full toolkit: the view-tree runtime, the
-animations crate and the component library. Depending on it is enough.
 
 ## Example
 
@@ -34,24 +24,28 @@ let root = node("root", Stack::vertical()
 let mut tree = Tree::new(root);
 ```
 
-The crates under the facade, in case you want to depend on one alone:
+## Examples
 
-| Crate | Purpose |
-|---|---|
-| `terminalui-core` | View tree, focus, layout, events, serialization |
-| `terminalui-animations` | Easings and buffer effects (fade, slide, dissolve, radial flare) |
-| `terminalui-components` | Buttons, inputs, tables, selects, charts, dialogs, and the rest |
+All examples ship with the repo and run with `cargo run --example <name>`:
 
-## Requirements
+```console
+counter    # minimal interactive counter
+meter      # a custom view written against the View trait
+form       # required-field form with submit handling
+dialog     # modal confirmation with a second view tree
+animation  # entrance animation with Effect
+```
 
-- Rust 2021 or newer (MSRV 1.88)
-- A terminal with truecolor support is recommended but not required
+## Docs
 
-## Repository
+- `docs/quickstart.md`: from a git dependency to a running app.
+- `docs/use-cases.md`: recipes for dashboards, forms, modals, wizards, toasts and more.
+- `docs/custom-views.md`: implement the `View` trait to add your own views.
+- `docs/agents.md`: machine-readable tree inspection for agents and tools.
+- `CONTRIBUTING.md`: verification suite, component conventions, style.
 
-- Source: <https://github.com/JeanVydes/terminalui>
-- Example app: `cargo run -p example-app`
+Requires Rust 1.94 or newer.
 
 ## License
 
-MIT. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).

@@ -12,9 +12,12 @@ use terminalui_core::{Context, Outcome, View};
 
 use super::icons::Icon;
 
+/// Public state of the breadcrumb: area, focus and highlight.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct BreadcrumbState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the breadcrumb would hold focus by the tree.
     pub focused: bool,
     /// Index into the composed segments used by keyboard navigation.
     pub highlight: usize,
@@ -39,7 +42,9 @@ pub struct BreadcrumbStyle {
 /// glyph. Segments are arbitrary views (usually [`terminalui_core::Text`]).
 #[derive(Serialize)]
 pub struct Breadcrumb {
+    /// Per-instance overrides; defaults match the theme.
     pub style: BreadcrumbStyle,
+    /// Public state: highlight and last rendered area.
     pub state: BreadcrumbState,
     children: Vec<terminalui_core::Node>,
     hit_areas: Vec<Rect>,
@@ -84,6 +89,7 @@ impl Breadcrumb {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: BreadcrumbStyle) -> Self {
         self.style = style;
         self

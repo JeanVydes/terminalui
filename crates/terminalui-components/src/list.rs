@@ -33,6 +33,7 @@ pub enum Marker {
     View(Node),
 }
 
+/// Public state of the list: selection, scroll offset and focus.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ListState {
     /// Last rendered area, set during render.
@@ -147,7 +148,6 @@ impl List {
 }
 impl List {
     /// Compose a list from arbitrary views, one per item.
-    /// Compose a list from arbitrary views, one per item.
     pub fn new(children: Vec<Node>) -> Self {
         Self {
             marker: Marker::Bullet,
@@ -163,11 +163,13 @@ impl List {
         }
     }
 
+    /// Builder shorthand: set the marker used for each item.
     pub fn with_marker(mut self, marker: Marker) -> Self {
         self.marker = marker;
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: ListStyle) -> Self {
         self.style = style;
         self

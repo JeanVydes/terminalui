@@ -16,8 +16,10 @@ use super::presentation::RenderStyle;
 const BLOCKS: [&str; 8] = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
 const ASCII_RAMP: [&str; 8] = [".", ":", "-", "=", "+", "*", "#", "@"];
 
+/// Public state of the sparkline: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SparklineState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -32,7 +34,9 @@ pub struct SparklineStyle {
 /// values in order; the last `width` of them are drawn.
 #[derive(Serialize)]
 pub struct Sparkline {
+    /// Public state: the last rendered area.
     pub state: SparklineState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: SparklineStyle,
     /// `Native` draws block glyphs; `Ascii` draws an ASCII ramp.
     pub presentation: RenderStyle,
@@ -40,6 +44,7 @@ pub struct Sparkline {
 }
 
 impl Sparkline {
+    /// Creates a sparkline with the given series; non-finite values are dropped.
     pub fn new(series: Vec<f64>) -> Self {
         Self {
             state: SparklineState {
@@ -54,20 +59,24 @@ impl Sparkline {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: SparklineStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: pick the glyph ramp.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self
     }
 
+    /// Number of samples currently held.
     pub fn len(&self) -> usize {
         self.series.len()
     }
 
+    /// `true` when there is nothing to draw.
     pub fn is_empty(&self) -> bool {
         self.series.is_empty()
     }

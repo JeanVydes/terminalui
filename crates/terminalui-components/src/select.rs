@@ -60,11 +60,16 @@ impl Default for SelectStyle {
     }
 }
 
+/// Public state of the select: area, focus, disabled, open and highlight.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SelectState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the select would hold focus by the tree.
     pub focused: bool,
+    /// Whether interaction is disabled.
     pub disabled: bool,
+    /// Whether the dropdown is open.
     pub open: bool,
     /// Index of the highlighted option while the popup is open.
     pub highlight: usize,
@@ -72,6 +77,7 @@ pub struct SelectState {
     pub offset: usize,
 }
 
+/// A select dropdown with composed option views.
 #[derive(Serialize)]
 pub struct Select {
     /// Composed options; each one is arbitrary views (usually text + icon).
@@ -80,7 +86,9 @@ pub struct Select {
     pub options: Vec<Node>,
     /// Index of the selected option. `None` when nothing is selected yet.
     pub selected: Option<usize>,
+    /// Public state: area, focus, disabled, open and highlight.
     pub state: SelectState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: SelectStyle,
     trigger_hit: Rect,
     option_hits: Vec<Rect>,
@@ -106,16 +114,19 @@ impl Select {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: SelectStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: disable or enable interaction.
     pub fn with_disabled(mut self, disabled: bool) -> Self {
         self.state.disabled = disabled;
         self
     }
 
+    /// Builder shorthand: pre-select the given option index.
     pub fn with_selected(mut self, selected: usize) -> Self {
         if let Some(index) = (selected < self.options.len()).then_some(selected) {
             self.selected = Some(index);
@@ -124,6 +135,7 @@ impl Select {
         self
     }
 
+    /// The selected option index, if any.
     pub fn selected(&self) -> Option<usize> {
         self.selected
     }
@@ -142,10 +154,12 @@ impl Select {
         self.state.offset = 0;
     }
 
+    /// Whether the dropdown is open.
     pub fn is_open(&self) -> bool {
         self.state.open
     }
 
+    /// Toggle the dropdown; a disabled or empty select stays closed.
     pub fn toggle_open(&mut self) {
         if self.state.disabled || self.options.is_empty() {
             return;
@@ -157,6 +171,7 @@ impl Select {
         }
     }
 
+    /// Open the dropdown; a disabled or empty select stays closed.
     pub fn open(&mut self) {
         if self.state.disabled || self.options.is_empty() {
             return;
@@ -166,6 +181,7 @@ impl Select {
         self.clamp_popup();
     }
 
+    /// Close the dropdown.
     pub fn close(&mut self) {
         self.state.open = false;
     }

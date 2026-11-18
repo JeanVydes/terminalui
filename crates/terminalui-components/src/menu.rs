@@ -18,13 +18,18 @@ use super::scroll::ScrollbarStyle;
 /// glyph to its left (`icon`) and an optional shortcut to its right.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct MenuItem {
+    /// The label shown on the row.
     pub label: String,
+    /// Optional glyph shown to the left of the label.
     pub icon: Option<String>,
+    /// Optional shortcut hint shown to the right.
     pub shortcut: Option<String>,
+    /// Muted and skipped by navigation when disabled.
     pub disabled: bool,
 }
 
 impl MenuItem {
+    /// Creates a menu item with the given label.
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
@@ -34,16 +39,19 @@ impl MenuItem {
         }
     }
 
+    /// Builder shorthand: set the icon glyph.
     pub fn icon(mut self, icon: impl Into<String>) -> Self {
         self.icon = Some(icon.into());
         self
     }
 
+    /// Builder shorthand: set the shortcut hint.
     pub fn shortcut(mut self, shortcut: impl Into<String>) -> Self {
         self.shortcut = Some(shortcut.into());
         self
     }
 
+    /// Builder shorthand: disable or enable the item.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
@@ -55,15 +63,19 @@ impl MenuItem {
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum MenuEntry {
+    /// A selectable item.
     Item(MenuItem),
+    /// A visual separator; not selectable.
     Separator,
 }
 
 impl MenuEntry {
+    /// Creates an item entry with the given label.
     pub fn item(label: impl Into<String>) -> Self {
         Self::Item(MenuItem::new(label))
     }
 
+    /// Creates a separator entry.
     pub fn separator() -> Self {
         Self::Separator
     }

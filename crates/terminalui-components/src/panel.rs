@@ -23,6 +23,7 @@ pub struct Panel {
 }
 
 impl Panel {
+    /// Creates an empty panel with transparent chrome.
     pub fn new() -> Self {
         Self {
             children: Vec::new(),
@@ -31,6 +32,7 @@ impl Panel {
         }
     }
 
+    /// Compose the panel from arbitrary views.
     pub fn children(mut self, children: Vec<Node>) -> Self {
         self.children = children;
         self

@@ -24,15 +24,20 @@ use super::scroll::{render_scrollbar, Scroll};
 
 const MAX_VISIBLE: usize = 8;
 
+/// Public state of the menu: area, focus, open, highlight and disabled.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct MenuState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the menu would hold focus by the tree.
     pub focused: bool,
+    /// Whether the popup is open.
     pub open: bool,
     /// Index of the highlighted entry.
     pub highlight: usize,
     /// First visible entry when the popup overflows.
     pub offset: usize,
+    /// Whether interaction is disabled.
     pub disabled: bool,
 }
 
@@ -40,8 +45,11 @@ pub struct MenuState {
 /// Activation is reported through [`DropdownMenu::take_activated`].
 #[derive(Serialize)]
 pub struct DropdownMenu {
+    /// Public state: area, focus, open, highlight and disabled.
     pub state: MenuState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: MenuStyle,
+    /// The entries shown in the popup, in order.
     pub items: Vec<MenuEntry>,
     trigger: Vec<Node>,
     activated: Option<usize>,
@@ -78,17 +86,20 @@ impl DropdownMenu {
         )])
     }
 
+    /// Replace the entries shown in the popup.
     pub fn with_items(mut self, items: Vec<MenuEntry>) -> Self {
         self.items = items;
         self.state.highlight = first_selectable(&self.items).unwrap_or(0);
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: MenuStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: disable or enable interaction.
     pub fn with_disabled(mut self, disabled: bool) -> Self {
         self.state.disabled = disabled;
         self

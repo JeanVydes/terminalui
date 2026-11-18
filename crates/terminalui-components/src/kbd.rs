@@ -13,6 +13,7 @@ use terminalui_core::outline::quoted;
 use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Outcome, View};
 
+/// Public state of the key cap: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct KbdState {
     /// Last rendered area, set during render.

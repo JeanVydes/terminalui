@@ -1,4 +1,4 @@
-//! Checkbox: a labelled toggle with [x] / [ ] states and an optional border.
+//! Checkbox: a labelled toggle with `[x]` / `[ ]` glyphs and an optional border.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -46,17 +46,25 @@ impl Default for CheckboxStyle {
     }
 }
 
+/// Public state of the checkbox: area, checked, focus and disabled.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CheckboxState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the box is currently checked.
     pub checked: bool,
+    /// Whether the checkbox would hold focus by the tree.
     pub focused: bool,
+    /// Whether interaction is disabled.
     pub disabled: bool,
 }
 
+/// A labelled toggle with `[x]` / `[ ]` glyphs.
 #[derive(Serialize)]
 pub struct Checkbox {
+    /// Public state: area, checked, focus and disabled.
     pub state: CheckboxState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: CheckboxStyle,
     children: Vec<Node>,
 }
@@ -83,21 +91,25 @@ impl Checkbox {
         }
     }
 
+    /// Builder shorthand: set the checked state.
     pub fn with_checked(mut self, checked: bool) -> Self {
         self.state.checked = checked;
         self
     }
 
+    /// Builder shorthand: disable or enable interaction.
     pub fn with_disabled(mut self, disabled: bool) -> Self {
         self.state.disabled = disabled;
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: CheckboxStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Whether the box is checked.
     pub fn is_checked(&self) -> bool {
         self.state.checked
     }

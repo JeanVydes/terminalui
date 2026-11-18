@@ -20,20 +20,28 @@ use super::icons::Icon;
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum StepStatus {
+    /// The step has not run yet.
     #[default]
     Pending,
+    /// The step is running.
     Active,
+    /// The step finished successfully.
     Done,
+    /// The step failed.
     Failed,
 }
 
+/// One step of a flow.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Step {
+    /// The label shown next to the step glyph.
     pub label: String,
+    /// Where the step is in the flow.
     pub status: StepStatus,
 }
 
 impl Step {
+    /// Creates a step with the given label, initially `Pending`.
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
@@ -41,6 +49,7 @@ impl Step {
         }
     }
 
+    /// Builder shorthand: set the status.
     pub fn with_status(mut self, status: StepStatus) -> Self {
         self.status = status;
         self
@@ -56,8 +65,10 @@ impl Step {
     }
 }
 
+/// Public state of the stepper: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct StepperState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -79,12 +90,16 @@ pub struct StepperStyle {
 /// The steps for one flow, in order, one row high.
 #[derive(Serialize)]
 pub struct Stepper {
+    /// The steps, in order.
     pub steps: Vec<Step>,
+    /// Public state: the last rendered area.
     pub state: StepperState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: StepperStyle,
 }
 
 impl Stepper {
+    /// Creates a stepper with the given steps.
     pub fn new(steps: Vec<Step>) -> Self {
         Self {
             steps,
@@ -95,6 +110,7 @@ impl Stepper {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: StepperStyle) -> Self {
         self.style = style;
         self

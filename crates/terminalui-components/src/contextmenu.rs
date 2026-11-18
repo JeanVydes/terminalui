@@ -24,13 +24,20 @@ use super::scroll::{render_scrollbar, Scroll};
 
 const MAX_VISIBLE: usize = 8;
 
+/// Public state of the context menu: area, focus, open, highlight, offset, disabled, position.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ContextState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the menu would hold focus by the tree.
     pub focused: bool,
+    /// Whether the menu is open.
     pub open: bool,
+    /// Index of the highlighted entry.
     pub highlight: usize,
+    /// First visible entry when the popup overflows.
     pub offset: usize,
+    /// Whether interaction is disabled.
     pub disabled: bool,
     /// Anchor point set by [`ContextMenu::open_at`].
     pub position: (u16, u16),
@@ -40,14 +47,18 @@ pub struct ContextState {
 /// through [`ContextMenu::take_activated`].
 #[derive(Serialize)]
 pub struct ContextMenu {
+    /// Public state: area, focus, open, highlight, offset, disabled, position.
     pub state: ContextState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: MenuStyle,
+    /// The entries shown in the popup, in order.
     pub items: Vec<MenuEntry>,
     activated: Option<usize>,
     item_hits: Vec<Rect>,
 }
 
 impl ContextMenu {
+    /// Creates a context menu with the given entries.
     pub fn new(items: Vec<MenuEntry>) -> Self {
         Self {
             state: ContextState {
@@ -66,6 +77,7 @@ impl ContextMenu {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: MenuStyle) -> Self {
         self.style = style;
         self
@@ -79,10 +91,12 @@ impl ContextMenu {
         self.state.offset = 0;
     }
 
+    /// Close the menu.
     pub fn close(&mut self) {
         self.state.open = false;
     }
 
+    /// Whether the menu is currently open.
     pub fn is_open(&self) -> bool {
         self.state.open
     }

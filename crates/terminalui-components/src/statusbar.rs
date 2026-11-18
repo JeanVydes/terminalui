@@ -16,8 +16,10 @@ const SEPARATOR: &str = " │ ";
 /// Width assumed for children that do not implement `measure()`.
 const DEFAULT_UNMEASURED: u16 = 12;
 
+/// Public state of the bar: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct StatusBarState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -34,7 +36,9 @@ pub struct StatusBarStyle {
 /// The trailing [`StatusBar::right`] children render flush to the right.
 #[derive(Serialize)]
 pub struct StatusBar {
+    /// Public state: the last rendered area.
     pub state: StatusBarState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: StatusBarStyle,
     children: Vec<Node>,
     /// Number of trailing children pinned to the right edge.
@@ -42,6 +46,7 @@ pub struct StatusBar {
 }
 
 impl StatusBar {
+    /// Creates an empty status bar.
     pub fn new() -> Self {
         Self {
             state: StatusBarState {
@@ -69,6 +74,7 @@ impl StatusBar {
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: StatusBarStyle) -> Self {
         self.style = style;
         self

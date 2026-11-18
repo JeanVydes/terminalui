@@ -16,6 +16,7 @@ use super::presentation::RenderStyle;
 /// A single tab. Its content is composed (usually a [`Text`] view).
 #[derive(Serialize)]
 pub struct Tab {
+    /// Whether the tab is skipped by navigation and renders muted.
     pub disabled: bool,
     children: Vec<Node>,
 }
@@ -78,10 +79,14 @@ impl View for Tab {
     }
 }
 
+/// Public state of the tabs: area, focus and selection.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TabsState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the tabs would hold focus by the tree.
     pub focused: bool,
+    /// Index of the selected tab.
     pub selected: usize,
 }
 
@@ -107,7 +112,9 @@ pub struct TabsStyle {
 /// [`Tabs::selected`] to know which tab is active.
 #[derive(Serialize)]
 pub struct Tabs {
+    /// Per-instance overrides; defaults match the theme.
     pub style: TabsStyle,
+    /// Public state: area, focus and selection.
     pub state: TabsState,
     children: Vec<Node>,
     hit_areas: Vec<Rect>,
@@ -154,6 +161,7 @@ impl Tabs {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: TabsStyle) -> Self {
         self.style = style;
         self

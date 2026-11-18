@@ -27,17 +27,25 @@ const VALUE_COLUMN: u16 = 9;
 /// outliers. Values are kept ordered on construction.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct BoxPlotRow {
+    /// Lowest whisker value.
     pub low: f64,
+    /// First quartile.
     pub q1: f64,
+    /// Median.
     pub median: f64,
+    /// Third quartile.
     pub q3: f64,
+    /// Highest whisker value.
     pub high: f64,
+    /// Outlier points beyond the whiskers.
     pub outliers: Vec<f64>,
     /// Box, whisker and cap ink. `None` uses the plot band color.
     pub color: Option<Color>,
 }
 
 impl BoxPlotRow {
+    /// Creates a row from low/high whiskers and quartiles. Values are
+    /// ordered and clamped on construction; non-finite values clamp to zero.
     pub fn new(low: f64, q1: f64, median: f64, q3: f64, high: f64) -> Self {
         let mut row = Self {
             low,
@@ -52,6 +60,7 @@ impl BoxPlotRow {
         row
     }
 
+    /// Attach outlier points; non-finite values are dropped.
     pub fn with_outliers(mut self, outliers: Vec<f64>) -> Self {
         self.outliers = outliers
             .into_iter()
@@ -60,6 +69,7 @@ impl BoxPlotRow {
         self
     }
 
+    /// Builder shorthand: pick the ink color for this row.
     pub fn with_color(mut self, color: Color) -> Self {
         self.color = Some(color);
         self
@@ -83,8 +93,10 @@ impl BoxPlotRow {
     }
 }
 
+/// Public state of the plot: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct BoxPlotState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -109,9 +121,13 @@ pub struct BoxPlotStyle {
 /// the boxes, whiskers, medians, outliers, grid and labels land.
 #[derive(Serialize)]
 pub struct BoxPlot {
+    /// Last rendered area, set during render.
     pub state: BoxPlotState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: BoxPlotStyle,
+    /// Which glyph set paints the boxes. Defaults to [`RenderStyle::Native`].
     pub presentation: RenderStyle,
+    /// Shading knobs for non-`Native` presentations.
     pub tuning: StyleTuning,
     rows: Vec<BoxPlotRow>,
     /// One composed view per row, serialized as `children` for uniformity.
@@ -122,6 +138,7 @@ pub struct BoxPlot {
 }
 
 impl BoxPlot {
+    /// Creates an empty plot with no rows.
     pub fn new() -> Self {
         Self {
             state: BoxPlotState::default(),
@@ -135,6 +152,7 @@ impl BoxPlot {
         }
     }
 
+    /// Replace the rows; out-of-order or non-finite values are sanitized.
     pub fn with_rows(mut self, rows: Vec<BoxPlotRow>) -> Self {
         self.set_rows(rows);
         self
@@ -160,21 +178,25 @@ impl BoxPlot {
         self
     }
 
+    /// Builder shorthand: pick the glyph set.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self
     }
 
+    /// Builder shorthand: set the shading knobs for non-`Native` presentations.
     pub fn with_tuning(mut self, tuning: StyleTuning) -> Self {
         self.tuning = tuning;
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: BoxPlotStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Replace the rows; out-of-order or non-finite values are sanitized.
     pub fn set_rows(&mut self, rows: Vec<BoxPlotRow>) {
         self.rows = rows;
         for row in &mut self.rows {
@@ -182,6 +204,7 @@ impl BoxPlot {
         }
     }
 
+    /// The rows currently held.
     pub fn rows(&self) -> &[BoxPlotRow] {
         &self.rows
     }

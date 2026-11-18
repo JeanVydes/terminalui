@@ -3,12 +3,11 @@
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
-/// Wraps any view in the tree together with the id the host knows it by.
+/// A node binds a view to a host-chosen id.
 ///
-/// The id is a `String` (the same shape as an HTML `id`); it is only used
-/// for programmatic queries (`Tree::focus`, `Tree::press`, `Tree::find`, …),
-/// never by the views themselves.
-/// A node binds a [`View`](crate::View) to a host-chosen id.
+/// The id is used for programmatic queries (`Tree::focus`, `Tree::press`,
+/// `Tree::find`), never by the views themselves. The id may be shared by
+/// several nodes; queries filter by id and type.
 pub struct Node {
     /// Host-chosen id. It may be shared by several nodes; queries filter by id and type.
     pub id: String,

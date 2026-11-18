@@ -12,9 +12,12 @@ use terminalui_core::{node, Context, Node, Outcome, Text, View};
 
 use super::floating::{FloatingBox, FloatingPosition};
 
+/// Public state of the tooltip: area and visibility.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TooltipState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the tooltip is visible.
     pub visible: bool,
 }
 
@@ -24,6 +27,7 @@ pub struct TooltipState {
 /// it shows. Tooltips are display-only.
 #[derive(Serialize)]
 pub struct Tooltip {
+    /// Public state: area and visibility.
     pub state: TooltipState,
     floating: FloatingBox,
 }
@@ -49,28 +53,34 @@ impl Tooltip {
         }
     }
 
+    /// Builder shorthand: anchor the tooltip to a floating position.
     pub fn with_position(mut self, position: FloatingPosition) -> Self {
         self.set_position(position);
         self
     }
 
+    /// Move the tooltip to a floating position.
     pub fn set_position(&mut self, position: FloatingPosition) {
         self.floating.set_position(position);
     }
 
+    /// Builder shorthand: set the box width in cells.
     pub fn with_width(mut self, width: u16) -> Self {
         self.floating = self.floating.with_width(width);
         self
     }
 
+    /// Show the tooltip.
     pub fn show(&mut self) {
         self.state.visible = true;
     }
 
+    /// Hide the tooltip.
     pub fn hide(&mut self) {
         self.state.visible = false;
     }
 
+    /// Whether the tooltip is currently visible.
     pub fn visible(&self) -> bool {
         self.state.visible
     }

@@ -18,11 +18,13 @@ use super::scroll::{render_scrollbar, Scroll, ScrollbarStyle};
 /// `weight` drives the column width allocated by the parent row.
 #[derive(Serialize)]
 pub struct TableCell {
+    /// Relative width weight; columns share width proportionally.
     pub weight: u16,
     children: Vec<Node>,
 }
 
 impl TableCell {
+    /// Compose a cell from arbitrary views.
     pub fn new(children: Vec<Node>) -> Self {
         Self {
             weight: 1,
@@ -38,6 +40,7 @@ impl TableCell {
         )])
     }
 
+    /// Builder shorthand: set the relative weight; `0` clamps to `1`.
     pub fn with_weight(mut self, weight: u16) -> Self {
         self.weight = weight.max(1);
         self
@@ -78,6 +81,7 @@ impl View for TableCell {
 /// [`Table::with_header`] renders as a styled header.
 #[derive(Serialize)]
 pub struct TableRow {
+    /// Whether this row renders as the styled header.
     pub is_header: bool,
     children: Vec<Node>,
 }
@@ -182,14 +186,20 @@ impl View for TableRow {
     }
 }
 
+/// Public state of the table: area, focus, selection and scroll offset.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TableState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the table would hold focus by the tree.
     pub focused: bool,
+    /// Index of the selected row.
     pub selected: usize,
+    /// Index of the first visible row.
     pub offset: usize,
 }
 
+/// Per-instance overrides for a table. Defaults match the theme.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct TableStyle {
     /// Selected row background. Defaults to `theme.primary`.
@@ -210,7 +220,9 @@ pub struct TableStyle {
 /// [`TableRow`]s containing [`TableCell`]s and add them as children.
 #[derive(Serialize)]
 pub struct Table {
+    /// Public state: area, focus, selection and scroll offset.
     pub state: TableState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: TableStyle,
     children: Vec<Node>,
     has_header: bool,
@@ -218,6 +230,7 @@ pub struct Table {
 }
 
 impl Table {
+    /// Creates an empty table with no rows.
     pub fn new() -> Self {
         Self {
             state: TableState {
@@ -233,6 +246,7 @@ impl Table {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: TableStyle) -> Self {
         self.style = style;
         self

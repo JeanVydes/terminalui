@@ -21,13 +21,18 @@ const DEFAULT_MIN_SIZE: u16 = 3;
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum GridAxis {
+    /// Panes side by side with vertical dividers (`│`).
     Row,
+    /// Panes stacked with horizontal dividers (`─`).
     Column,
 }
 
+/// Public state of the grid: area, focus and the active divider.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct GridState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the grid would hold focus by the tree.
     pub focused: bool,
     /// Divider the keyboard resizes. Zero-based, at most `panes - 2`.
     pub divider: usize,
@@ -51,14 +56,18 @@ pub struct GridStyle {
     pub presentation: Option<RenderStyle>,
 }
 
+/// A resizable layout grid: panes separated by draggable dividers.
 #[derive(Serialize)]
 pub struct ResizableGrid {
+    /// Axis along which the panes are laid out.
     pub axis: GridAxis,
     /// Relative weights of each pane.
     pub weights: Vec<u16>,
     /// Minimum size (cells) of each pane.
     pub min_sizes: Vec<u16>,
+    /// Public state: area, focus and the dividers.
     pub state: GridState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: GridStyle,
     /// Anchor of the active mouse drag.
     drag_anchor: u16,
@@ -91,6 +100,7 @@ impl ResizableGrid {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: GridStyle) -> Self {
         self.style = style;
         self
@@ -112,6 +122,7 @@ impl ResizableGrid {
         self
     }
 
+    /// Builder shorthand: set a minimum pane size per pane; missing entries fall back to the default.
     pub fn with_min_sizes(mut self, min_sizes: Vec<u16>) -> Self {
         self.min_sizes = min_sizes
             .into_iter()

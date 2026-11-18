@@ -27,6 +27,7 @@ pub struct Separator {
 }
 
 impl Separator {
+    /// Creates a default separator: hairline, no glyph, no chrome.
     pub fn new() -> Self {
         Self {
             presentation: RenderStyle::default(),
@@ -41,6 +42,7 @@ impl Separator {
         self
     }
 
+    /// Builder shorthand: pick the glyph set used to paint the rule.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self

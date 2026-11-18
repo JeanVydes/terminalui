@@ -14,22 +14,33 @@ use super::chrome::{draw_box, Border, BorderSet, Chrome, Padding, Radius};
 use super::layout::{row, Align};
 use super::spinner::Spinner;
 
+/// Visual significance of the button. Maps to theme colors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ButtonVariant {
+    /// The primary action; filled with the theme primary color.
     Primary,
+    /// A secondary action; filled with the theme secondary color.
     Secondary,
+    /// A destructive action; filled with the theme destructive color.
     Destructive,
+    /// No border, no fill; just the label.
     Ghost,
+    /// Outlined, transparent fill.
     Outline,
 }
 
+/// Public state of the button: area, focus, disabled, loading and activation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ButtonState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the button would hold focus by the tree.
     pub focused: bool,
+    /// Whether interaction is disabled.
     pub disabled: bool,
+    /// Whether the button shows a spinner instead of its label.
     pub loading: bool,
     /// Set when the button is activated (key, click or programmatic press);
     /// drained by the host with [`Button::take_pressed`].
@@ -69,10 +80,14 @@ impl Default for ButtonStyle {
 
 const SPINNER_SLOT: &str = "__spinner";
 
+/// A pressable button with variants, loading state and composed content.
 #[derive(Serialize)]
 pub struct Button {
+    /// Visual significance of the button.
     pub variant: ButtonVariant,
+    /// Public state: area, focus, disabled, loading and activation.
     pub state: ButtonState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: ButtonStyle,
     children: Vec<Node>,
 }
@@ -83,6 +98,7 @@ impl Button {
         Self::with_children(variant, vec![node("label", Text::new(label))])
     }
 
+    /// Set the loading state; a spinner is composed into the content while loading.
     pub fn set_loading(&mut self, loading: bool) {
         self.state.loading = loading;
         if loading {
@@ -124,11 +140,13 @@ impl Button {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: ButtonStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: disable or enable interaction.
     pub fn set_disabled(&mut self, disabled: bool) {
         self.state.disabled = disabled;
         if disabled {

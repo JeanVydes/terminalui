@@ -18,15 +18,22 @@ use super::floating::{FloatingBox, FloatingPosition};
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ToastKind {
+    /// Informational; uses the theme accent color.
     Info,
+    /// Positive outcome; uses the theme success color.
     Success,
+    /// Warning; uses the theme warning color.
     Warning,
+    /// Error/failure; uses the theme destructive color.
     Destructive,
 }
 
+/// Public state of the toast: area and elapsed time.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ToastState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Time elapsed since the toast was created.
     pub elapsed: Duration,
 }
 
@@ -34,8 +41,11 @@ pub struct ToastState {
 /// pass arbitrary views to [`Toast::with_children`].
 #[derive(Serialize)]
 pub struct Toast {
+    /// Significance of the toast; selects the title and the accent color.
     pub kind: ToastKind,
+    /// Time to live before the toast fades out.
     pub ttl: Duration,
+    /// Public state: area and elapsed time.
     pub state: ToastState,
     floating: FloatingBox,
 }
@@ -67,16 +77,19 @@ impl Toast {
     }
 }
 impl Toast {
+    /// Builder shorthand: set the time to live.
     pub fn with_ttl(mut self, ttl: Duration) -> Self {
         self.ttl = ttl;
         self
     }
 
+    /// Builder shorthand: anchor the toast to a floating position.
     pub fn with_position(mut self, position: FloatingPosition) -> Self {
         self.floating = self.floating.with_position(position);
         self
     }
 
+    /// Builder shorthand: set the box width in cells.
     pub fn with_width(mut self, width: u16) -> Self {
         self.floating = self.floating.with_width(width);
         self

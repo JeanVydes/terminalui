@@ -13,10 +13,14 @@ use terminalui_core::{Context, Outcome, View};
 
 use super::presentation::{RenderStyle, StyleTuning};
 
+/// Public state of the slider: area, focus and disabled.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SliderState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the slider would hold focus by the tree.
     pub focused: bool,
+    /// Whether interaction is disabled.
     pub disabled: bool,
 }
 
@@ -39,7 +43,9 @@ pub struct SliderStyle {
 /// ten). The host reads [`Slider::value`] every frame; there is no outbox.
 #[derive(Serialize)]
 pub struct Slider {
+    /// Public state: area, focus and disabled.
     pub state: SliderState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: SliderStyle,
     /// Which glyph set draws the track. Defaults to [`RenderStyle::Native`].
     pub presentation: RenderStyle,
@@ -52,6 +58,7 @@ pub struct Slider {
 }
 
 impl Slider {
+    /// Creates a slider over `[min, max]` in `step` increments, starting at `min`.
     pub fn new(min: f64, max: f64, step: f64) -> Self {
         let (min, max) = if min <= max { (min, max) } else { (max, min) };
         let step = if step.is_finite() && step > 0.0 {
@@ -90,6 +97,7 @@ impl Slider {
         }
     }
 
+    /// Snap `value` to `[min, max]` and the step grid. Returns `true` when the value changed.
     pub fn set_value(&mut self, value: f64) -> bool {
         let snapped = if value.is_finite() {
             let steps = ((value - self.min) / self.step).round();
@@ -104,26 +112,31 @@ impl Slider {
         true
     }
 
+    /// Builder shorthand: set the value; snapped to the step grid.
     pub fn with_value(mut self, value: f64) -> Self {
         self.set_value(value);
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: SliderStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: pick the glyph set.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self
     }
 
+    /// Builder shorthand: set the shading knobs for non-`Native` presentations.
     pub fn with_tuning(mut self, tuning: StyleTuning) -> Self {
         self.tuning = tuning;
         self
     }
 
+    /// Builder shorthand: disable or enable interaction.
     pub fn set_disabled(&mut self, disabled: bool) {
         self.state.disabled = disabled;
     }

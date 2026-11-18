@@ -29,7 +29,9 @@ pub struct FormStyle {
 pub struct FormField {
     /// Key used in the `Submitted` payload.
     pub name: String,
+    /// Whether validation requires a non-empty value.
     pub required: bool,
+    /// Custom message shown when a required field is left empty.
     pub required_message: Option<String>,
     children: Vec<Node>,
 }
@@ -61,6 +63,7 @@ impl FormField {
         }
     }
 
+    /// Sets the placeholder text on every composed [`Input`] child.
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         let placeholder = placeholder.into();
         for child in &mut self.children {
@@ -71,6 +74,7 @@ impl FormField {
         self
     }
 
+    /// Marks the field as required.
     pub fn required(mut self) -> Self {
         self.required = true;
         self
@@ -203,6 +207,7 @@ impl View for FormField {
 /// (handled by the tree). Enter submits.
 #[derive(Serialize)]
 pub struct Form {
+    /// Per-instance overrides; defaults match the theme.
     pub style: FormStyle,
     children: Vec<Node>,
     submitted: Option<Vec<(String, String)>>,
@@ -230,6 +235,7 @@ impl Form {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: FormStyle) -> Self {
         self.style = style;
         self

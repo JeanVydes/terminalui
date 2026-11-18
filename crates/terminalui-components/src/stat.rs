@@ -18,20 +18,28 @@ use terminalui_core::{Context, Outcome, View};
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum StatTone {
+    /// Neither good nor bad; neutral muted rendering.
     #[default]
     Neutral,
+    /// The direction is good; success color.
     Positive,
+    /// The direction is bad; destructive color.
     Negative,
 }
 
+/// A delta chip: text plus its tone.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct StatDelta {
+    /// Delta text, e.g. `+2 services`.
     pub text: String,
+    /// Meaning of the arrow direction.
     pub tone: StatTone,
 }
 
+/// Public state of the tile: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct StatState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -54,14 +62,20 @@ pub struct StatStyle {
 /// delta arrow and text to the right of the value.
 #[derive(Serialize)]
 pub struct Stat {
+    /// The muted caption above the value.
     pub label: String,
+    /// The big number or string.
     pub value: String,
+    /// Optional delta chip shown to the right of the value.
     pub delta: Option<StatDelta>,
+    /// Public state: the last rendered area.
     pub state: StatState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: StatStyle,
 }
 
 impl Stat {
+    /// Creates a stat tile with the given label and value.
     pub fn new(label: impl Into<String>, value: impl Into<String>) -> Self {
         Self {
             label: label.into(),
@@ -83,6 +97,7 @@ impl Stat {
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: StatStyle) -> Self {
         self.style = style;
         self

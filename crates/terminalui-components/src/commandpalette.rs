@@ -29,12 +29,16 @@ const MAX_VISIBLE: usize = 8;
 /// are skipped by navigation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Command {
+    /// Displayed label; what fuzzy matching runs over.
     pub label: String,
+    /// Muted right column: a group, a path, a shortcut.
     pub detail: Option<String>,
+    /// Muted and skipped by keyboard navigation when disabled.
     pub disabled: bool,
 }
 
 impl Command {
+    /// Creates a command with the given label.
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
@@ -43,31 +47,42 @@ impl Command {
         }
     }
 
+    /// Builder shorthand: set the muted right-column detail.
     pub fn detail(mut self, detail: impl Into<String>) -> Self {
         self.detail = Some(detail.into());
         self
     }
 
+    /// Builder shorthand: disable or enable the command.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 }
 
+/// Public state of the palette: area, focus, open, highlight and scroll offset.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PaletteState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the field would hold focus by the tree.
     pub focused: bool,
+    /// Whether the palette is open.
     pub open: bool,
+    /// Index of the highlighted command in the filtered view.
     pub highlight: usize,
+    /// First visible command when the list overflows.
     pub offset: usize,
 }
 
 /// The palette. Rendered over everything when open; inert when closed.
 #[derive(Serialize)]
 pub struct CommandPalette {
+    /// Public state: area, focus, open, highlight and offset.
     pub state: PaletteState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: MenuStyle,
+    /// The commands offered by the palette.
     pub commands: Vec<Command>,
     field: LineField,
     #[serde(skip)]
@@ -77,6 +92,7 @@ pub struct CommandPalette {
 }
 
 impl CommandPalette {
+    /// Creates a palette with the given commands. Starts closed, not focused, filter empty.
     pub fn new(commands: Vec<Command>) -> Self {
         Self {
             state: PaletteState {
@@ -94,11 +110,13 @@ impl CommandPalette {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: MenuStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Open the palette and reset the filter.
     pub fn open(&mut self) {
         self.state.open = true;
         self.state.offset = 0;
@@ -106,10 +124,12 @@ impl CommandPalette {
         self.clamp_highlight();
     }
 
+    /// Close the palette.
     pub fn close(&mut self) {
         self.state.open = false;
     }
 
+    /// Toggle the palette.
     pub fn toggle(&mut self) {
         if self.state.open {
             self.close();
@@ -118,6 +138,7 @@ impl CommandPalette {
         }
     }
 
+    /// Whether the palette is currently open.
     pub fn is_open(&self) -> bool {
         self.state.open
     }

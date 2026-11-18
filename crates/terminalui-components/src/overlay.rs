@@ -12,8 +12,10 @@ use terminalui_core::theme::Theme;
 use terminalui_core::Context;
 use terminalui_core::{Outcome, View};
 
+/// Public state of the overlay: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct OverlayState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -35,13 +37,17 @@ fn dim(theme: &Theme) -> Color {
     }
 }
 
+/// A modal scrim: blocks and dims everything underneath it.
 #[derive(Serialize)]
 pub struct Overlay {
+    /// Public state: the last rendered area.
     pub state: OverlayState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: OverlayStyle,
 }
 
 impl Overlay {
+    /// Creates an empty overlay.
     pub fn new() -> Self {
         Self {
             state: OverlayState {
@@ -51,11 +57,13 @@ impl Overlay {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: OverlayStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// `true` when the cell at `(column, row)` is inside the overlay.
     pub fn is_hit(&self, column: u16, row: u16) -> bool {
         let area = self.state.area;
         column >= area.x

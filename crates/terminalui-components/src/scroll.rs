@@ -41,7 +41,9 @@ pub enum ScrollbarVisibility {
     /// Draw only when the content overflows the viewport.
     #[default]
     Auto,
+    /// Always draw the scrollbar, even without overflow.
     Always,
+    /// Never draw the scrollbar.
     Never,
 }
 
@@ -50,10 +52,13 @@ pub enum ScrollbarVisibility {
 /// hardcoded glyph.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ScrollbarStyle {
+    /// When the scrollbar is drawn.
     pub visible: ScrollbarVisibility,
     /// Presentation for the glyphs; defaults to [`RenderStyle::Native`].
     pub presentation: RenderStyle,
+    /// Track (background) color. Defaults to `theme.muted`.
     pub track_color: Option<Color>,
+    /// Thumb color. Defaults to `theme.foreground`.
     pub thumb_color: Option<Color>,
     /// `Small` draws rounded caps on a tall-enough thumb.
     pub radius: Radius,
@@ -85,12 +90,16 @@ fn should_draw(style: &ScrollbarStyle, total: usize, viewport: usize) -> bool {
 /// row count, `total` the total rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Scroll {
+    /// Index of the first visible row.
     pub offset: usize,
+    /// Number of visible rows.
     pub viewport: usize,
+    /// Total number of rows.
     pub total: usize,
 }
 
 impl Scroll {
+    /// Creates a scroll model at offset 0 with the given viewport and total.
     pub fn new(viewport: usize, total: usize) -> Self {
         Self {
             offset: 0,
@@ -111,16 +120,19 @@ impl Scroll {
         scroll
     }
 
+    /// Builder shorthand: set the offset; clamps to the max offset afterwards.
     pub fn with_offset(mut self, offset: usize) -> Self {
         self.clamp();
         self.offset = offset.min(self.max_offset());
         self
     }
 
+    /// The largest legal offset: total minus viewport.
     pub fn max_offset(&self) -> usize {
         self.total.saturating_sub(self.viewport)
     }
 
+    /// Clamp the offset to the valid range.
     pub fn clamp(&mut self) {
         if self.total == 0 {
             self.offset = 0;

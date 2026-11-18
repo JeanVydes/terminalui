@@ -19,6 +19,7 @@ use super::presentation::{RenderStyle, StyleTuning};
 const MAX_HISTORY: usize = 240;
 const AXIS_WIDTH: u16 = 8;
 
+/// Public state of the chart: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LineChartState {
     /// Last rendered area, set during render.

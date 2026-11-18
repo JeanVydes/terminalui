@@ -28,7 +28,7 @@ pub enum BadgeVariant {
 }
 
 /// Per-instance overrides of colors and geometry for a badge. Defaults match the theme.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct BadgeStyle {
     /// Badge background. Defaults to the variant's color.
     pub background: Option<Color>,

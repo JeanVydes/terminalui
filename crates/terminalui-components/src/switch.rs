@@ -12,11 +12,16 @@ use terminalui_core::input::InputEvent;
 use terminalui_core::theme::Theme;
 use terminalui_core::{node, Context, Node, Outcome, Text, View};
 
+/// Public state of the switch: area, on, focus and disabled.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SwitchState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the switch is currently on.
     pub on: bool,
+    /// Whether the switch would hold focus by the tree.
     pub focused: bool,
+    /// Whether interaction is disabled.
     pub disabled: bool,
 }
 
@@ -35,7 +40,9 @@ pub struct SwitchStyle {
 /// [`Switch::new`]; the common case is a single [`Text`] view.
 #[derive(Serialize)]
 pub struct Switch {
+    /// Public state: area, on, focus and disabled.
     pub state: SwitchState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: SwitchStyle,
     children: Vec<Node>,
 }
@@ -60,21 +67,25 @@ impl Switch {
         }
     }
 
+    /// Builder shorthand: set whether the switch starts on.
     pub fn with_on(mut self, on: bool) -> Self {
         self.state.on = on;
         self
     }
 
+    /// Builder shorthand: disable or enable interaction.
     pub fn with_disabled(mut self, disabled: bool) -> Self {
         self.state.disabled = disabled;
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: SwitchStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Toggle the switch. Returns the new state.
     pub fn toggle(&mut self) -> bool {
         self.state.on = !self.state.on;
         self.state.on

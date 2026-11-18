@@ -16,8 +16,10 @@ use terminalui_core::{Context, Node, Outcome, View};
 use super::layout::{row, Align};
 use super::presentation::{RenderStyle, StyleTuning};
 
+/// Public state of the gauge: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct GaugeState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -40,7 +42,9 @@ pub struct GaugeStyle {
 pub struct Gauge {
     /// Target fraction, clamped to 0..=1.
     pub value: f64,
+    /// Public state: the last rendered area.
     pub state: GaugeState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: GaugeStyle,
     /// Which glyph set paints the bar. Defaults to [`RenderStyle::Native`].
     pub presentation: RenderStyle,
@@ -50,6 +54,7 @@ pub struct Gauge {
 }
 
 impl Gauge {
+    /// Creates a gauge with the given value; clamped to `0.0..=1.0`.
     pub fn new(value: f64) -> Self {
         Self {
             value: value.clamp(0.0, 1.0),
@@ -63,21 +68,25 @@ impl Gauge {
         }
     }
 
+    /// Builder shorthand: set the value; clamped to `0.0..=1.0`.
     pub fn with_value(mut self, value: f64) -> Self {
         self.value = value.clamp(0.0, 1.0);
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: GaugeStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: pick the glyph set.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self
     }
 
+    /// Builder shorthand: set the shading knobs for non-`Native` presentations.
     pub fn with_tuning(mut self, tuning: StyleTuning) -> Self {
         self.tuning = tuning;
         self

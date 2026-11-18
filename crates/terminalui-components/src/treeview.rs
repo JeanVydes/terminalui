@@ -17,12 +17,16 @@ use super::scroll::{clamp_view, render_scrollbar, Scroll, ScrollbarStyle};
 /// One host-provided node of the tree.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TreeNode {
+    /// The label shown on the row.
     pub label: String,
+    /// Whether the branch is expanded; ignored for leaves.
     pub expanded: bool,
+    /// Child nodes, in order.
     pub children: Vec<TreeNode>,
 }
 
 impl TreeNode {
+    /// Creates a leaf node with the given label.
     pub fn leaf(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
@@ -31,6 +35,7 @@ impl TreeNode {
         }
     }
 
+    /// Creates a branch node with the given children; initially collapsed.
     pub fn branch(label: impl Into<String>, children: Vec<TreeNode>) -> Self {
         Self {
             label: label.into(),
@@ -39,6 +44,7 @@ impl TreeNode {
         }
     }
 
+    /// Builder shorthand: set the expansion state.
     pub fn with_expanded(mut self, expanded: bool) -> Self {
         self.expanded = expanded;
         self
@@ -49,26 +55,33 @@ impl TreeNode {
     }
 }
 
+/// Public state of the tree: area, cursor, scroll offset and focus.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TreeViewState {
+    /// Last rendered area, set during render.
     pub area: Rect,
     /// Index into the visible (flattened) rows.
     pub cursor: usize,
     /// First visible row when the tree overflows.
     pub offset: usize,
+    /// Whether the tree would hold focus by the tree.
     pub focused: bool,
 }
 
 /// Per-instance overrides for a tree view. Defaults match the theme.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct TreeViewStyle {
+    /// Row label color. Defaults to `theme.foreground`.
     pub label: Option<Color>,
+    /// Highlighted row text color. Defaults to `theme.background`.
     pub selected_fg: Option<Color>,
+    /// Highlighted row background. Defaults to `theme.primary`.
     pub selected_bg: Option<Color>,
     /// Disclosure glyph color. Defaults to `theme.muted`.
     pub disclosure: Option<Color>,
     /// Bold the highlighted row. Default true.
     pub bold: Option<bool>,
+    /// Scrollbar style. Defaults to the theme scrollbar.
     pub scrollbar: Option<ScrollbarStyle>,
 }
 
@@ -83,12 +96,15 @@ struct FlatRow<'a> {
 /// branch disclosure toggles it.
 #[derive(Serialize)]
 pub struct TreeView {
+    /// Public state: area, cursor, scroll offset and focus.
     pub state: TreeViewState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: TreeViewStyle,
     nodes: Vec<TreeNode>,
 }
 
 impl TreeView {
+    /// Creates a tree view with the given root nodes.
     pub fn new(nodes: Vec<TreeNode>) -> Self {
         Self {
             state: TreeViewState {
@@ -102,6 +118,7 @@ impl TreeView {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: TreeViewStyle) -> Self {
         self.style = style;
         self

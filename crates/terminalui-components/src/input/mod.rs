@@ -33,13 +33,18 @@ use super::scroll::ScrollbarStyle;
 mod edit;
 mod render;
 
+/// Public state of the input: area, text, cursor, focus and scroll.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct InputState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// The current text content.
     pub value: String,
     /// Cursor position in chars, counted across newlines.
     pub cursor: usize,
+    /// Whether the input would hold focus by the tree.
     pub focused: bool,
+    /// Whether interaction is disabled.
     pub disabled: bool,
     /// First visible line in multi-line mode.
     pub scroll: usize,
@@ -92,8 +97,11 @@ impl Default for InputStyle {
 /// focusable inputs); events drive cursor, selection and editing.
 #[derive(Serialize)]
 pub struct Input {
+    /// Public state: area, text, cursor, focus and scroll.
     pub state: InputState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: InputStyle,
+    /// Whether the input renders and edits multiple lines.
     pub multiline: bool,
     /// Edit mode: selection with Shift+arrows, Ctrl+A/C/X/V, Ctrl+L, and
     /// selection-aware deletion/paste. Default on, as standard everywhere.
@@ -114,6 +122,7 @@ pub struct Input {
 }
 
 impl Input {
+    /// Builder shorthand: set the placeholder text shown when empty.
     pub fn with_placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = vec![node("placeholder", Text::new(placeholder))];
         self
@@ -124,6 +133,7 @@ impl Input {
         self.placeholder = vec![node("placeholder", Text::new(placeholder))];
     }
 
+    /// Creates an empty single-line input.
     pub fn new() -> Self {
         Self {
             state: InputState {
@@ -149,17 +159,18 @@ impl Input {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: InputStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Set the line mode; multi-line inputs wrap and scroll vertically.
     pub fn multiline(mut self, multiline: bool) -> Self {
         self.multiline = multiline;
         self
     }
 
-    /// Convenience: a plain text placeholder.
     /// Composed placeholder: any views, usually an icon plus a text.
     pub fn with_placeholder_children(mut self, children: Vec<Node>) -> Self {
         self.placeholder = children;
@@ -173,11 +184,13 @@ impl Input {
         self
     }
 
+    /// Builder shorthand: set the caret style.
     pub fn with_cursor_style(mut self, cursor_style: CursorStyle) -> Self {
         self.style.cursor_style = cursor_style;
         self
     }
 
+    /// Replace the whole text; cursor moves to the end.
     pub fn set_value(&mut self, value: impl Into<String>) {
         self.state.value = value.into();
         self.state.cursor = self.state.value.chars().count();
@@ -186,6 +199,7 @@ impl Input {
         self.state.scroll_x = 0;
     }
 
+    /// Clear the text, selection and scroll state.
     pub fn clear(&mut self) {
         self.state.value.clear();
         self.state.cursor = 0;

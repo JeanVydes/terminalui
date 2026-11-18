@@ -18,6 +18,7 @@ use super::presentation::{RenderStyle, StyleTuning};
 
 const AXIS_WIDTH: u16 = 8;
 
+/// Public state of the chart: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct BarChartState {
     /// Last rendered area, set during render.
@@ -84,6 +85,7 @@ impl BarChart {
         self
     }
 
+    /// Builder shorthand: set the shading knobs for non-`Native` presentations.
     pub fn with_tuning(mut self, tuning: StyleTuning) -> Self {
         self.tuning = tuning;
         self

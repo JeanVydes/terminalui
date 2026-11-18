@@ -41,6 +41,7 @@ pub struct StyleTuning {
 }
 
 impl StyleTuning {
+    /// Returns a copy with `density` clamped to `2..=6` and `contrast` in `0.25..=4.0`.
     pub const fn clamped(mut self) -> Self {
         if self.density < 2 {
             self.density = 2;
@@ -121,10 +122,15 @@ impl RenderStyle {
 /// draws the live price line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Presentation {
+    /// Glyph for the background grid and axes.
     pub grid: &'static str,
+    /// Glyph for wicks and other thin strokes.
     pub wick: &'static str,
+    /// Glyph marking a flat candle.
     pub doji: &'static str,
+    /// Glyph filling candle bodies.
     pub body: &'static str,
+    /// Glyph for the live price line.
     pub live: &'static str,
 }
 
@@ -148,9 +154,13 @@ const FRAMES_DITHER: &[&str] = &["░", "▒", "▓", "█", "▓", "▒"];
 /// at least three cells.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScrollbarGlyphs {
+    /// Glyph painting the rail.
     pub track: &'static str,
+    /// Glyph painting the thumb.
     pub thumb: &'static str,
+    /// Top cap glyph for a tall-enough thumb.
     pub cap_top: &'static str,
+    /// Bottom cap glyph for a tall-enough thumb.
     pub cap_bottom: &'static str,
 }
 
@@ -158,7 +168,9 @@ pub struct ScrollbarGlyphs {
 /// `unchecked` draws the empty box.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CheckboxGlyphs {
+    /// Glyph drawn in the box when checked.
     pub checked: &'static str,
+    /// Glyph drawn in the box when unchecked.
     pub unchecked: &'static str,
 }
 

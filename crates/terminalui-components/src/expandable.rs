@@ -10,10 +10,14 @@ use terminalui_core::input::InputEvent;
 use terminalui_core::theme::Theme;
 use terminalui_core::{node, Context, Node, Outcome, Text, TextStyle, View};
 
+/// Public state of the section: area, expansion and focus.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ExpandableState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the body is currently shown.
     pub expanded: bool,
+    /// Whether the header would hold focus by the tree.
     pub focused: bool,
 }
 
@@ -34,7 +38,9 @@ pub struct ExpandableStyle {
 /// the remaining children form the body, visible only when expanded.
 #[derive(Serialize)]
 pub struct Expandable {
+    /// Per-instance overrides; defaults match the theme.
     pub style: ExpandableStyle,
+    /// Public state: area, expansion and focus.
     pub state: ExpandableState,
     children: Vec<Node>,
 }
@@ -79,11 +85,13 @@ impl Expandable {
         self
     }
 
+    /// Builder shorthand: set whether the body starts expanded.
     pub fn with_expanded(mut self, expanded: bool) -> Self {
         self.state.expanded = expanded;
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: ExpandableStyle) -> Self {
         self.style = style;
         self

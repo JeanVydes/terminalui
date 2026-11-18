@@ -1,7 +1,16 @@
 # terminalui
 
 The facade crate for the terminalui toolkit. Re-exports the three crates
-that make it up so you can depend on a single package:
+that make it up so you can depend on a single package.
+
+Distributed on git, tracking `main`:
+
+```toml
+[dependencies]
+terminalui = { git = "https://github.com/JeanVydes/terminalui" }
+```
+
+It re-exports:
 
 - `terminalui-core`: the retained view tree, focus, layout and events.
 - `terminalui-animations`: easings and buffer effects.

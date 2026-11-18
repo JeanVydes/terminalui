@@ -92,18 +92,15 @@ pub enum Effect {
         color: Option<Color>,
     },
     /// Sweep reveal with a bright leading edge, right to left.
-    /// Sweep reveal with a bright leading edge, right to left.
     SweepLeft {
         /// Color of the leading edge; defaults to `theme.accent`.
         color: Option<Color>,
     },
     /// Thanos-style disintegration: cells turn to ash that drifts up and fades.
-    /// Thanos-style disintegration: cells turn to ash that drifts up and fades.
     Thanos {
         /// The deterministic seed driving the cell assignment.
         seed: u64,
     },
-    /// Dissolve in/out: scattered cells vanish and reappear.
     /// Dissolve in/out: scattered cells vanish and reappear.
     Dissolve {
         /// The deterministic seed driving the cell assignment.

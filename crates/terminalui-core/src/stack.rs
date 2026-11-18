@@ -104,8 +104,6 @@ impl Stack {
 
     /// Layout constraints, one per child. Children without a constraint
     /// share the remaining space with `Fill(1)`.
-    /// Layout constraints, one per child. Children without a constraint
-    /// share the remaining space with `Fill(1)`.
     pub fn constraints(mut self, constraints: Vec<Constraint>) -> Self {
         self.constraints = constraints;
         self

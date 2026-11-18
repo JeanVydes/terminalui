@@ -4,6 +4,7 @@
 //! Most glyphs occupy a single cell, though `Warning` and `Info` may render
 //! double-width in some terminals.
 
+/// Unicode glyph for every icon, renderable without patched fonts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Icon {
@@ -62,6 +63,7 @@ pub enum Icon {
 }
 
 impl Icon {
+    /// The glyph used to render this icon.
     pub fn glyph(self) -> &'static str {
         match self {
             Icon::Check => "\u{2713}",

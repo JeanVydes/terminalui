@@ -33,10 +33,14 @@ pub enum PopoverArrow {
     Bottom,
 }
 
+/// Public state of the popover: area, visibility and arrow edge.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PopoverState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the popover is visible.
     pub visible: bool,
+    /// Which edge the caret sits on.
     pub arrow: PopoverArrow,
 }
 
@@ -46,6 +50,7 @@ pub struct PopoverState {
 /// trigger's events).
 #[derive(Serialize)]
 pub struct Popover {
+    /// Public state: area, visibility and arrow edge.
     pub state: PopoverState,
     floating: FloatingBox,
 }
@@ -71,16 +76,19 @@ impl Popover {
         }
     }
 
+    /// Builder shorthand: anchor the popover to a floating position.
     pub fn with_position(self, position: FloatingPosition) -> Self {
         let mut popover = self;
         popover.set_position(position);
         popover
     }
 
+    /// Move the popover to a floating position.
     pub fn set_position(&mut self, position: FloatingPosition) {
         self.floating.set_position(position);
     }
 
+    /// Builder shorthand: set the box width in cells.
     pub fn with_width(mut self, width: u16) -> Self {
         self.floating = self.floating.with_width(width);
         self
@@ -93,18 +101,22 @@ impl Popover {
         self
     }
 
+    /// Show the popover.
     pub fn show(&mut self) {
         self.state.visible = true;
     }
 
+    /// Hide the popover.
     pub fn hide(&mut self) {
         self.state.visible = false;
     }
 
+    /// Toggle the visibility of the popover.
     pub fn toggle(&mut self) {
         self.state.visible = !self.state.visible;
     }
 
+    /// Whether the popover is currently visible.
     pub fn visible(&self) -> bool {
         self.state.visible
     }
