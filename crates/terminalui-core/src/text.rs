@@ -12,26 +12,35 @@ use crate::outline::quoted;
 use crate::theme::Theme;
 use crate::view::View;
 
+/// Styling for a [`Text`] leaf.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 pub struct TextStyle {
+    /// Text color.
     pub foreground: Option<Color>,
+    /// Background color.
     pub background: Option<Color>,
+    /// Render bold.
     pub bold: bool,
+    /// Render italic.
     pub italic: bool,
+    /// Render with a solid underline.
     pub underline: bool,
 }
 
 impl TextStyle {
+    /// Builder shorthand: `true` for [`TextStyle::bold`].
     pub fn bold(mut self) -> Self {
         self.bold = true;
         self
     }
+    /// Builder shorthand: set the foreground color.
     pub fn fg(mut self, color: Color) -> Self {
         self.foreground = Some(color);
         self
     }
 }
 
+/// Plain text as a view leaf.
 #[derive(Serialize)]
 pub struct Text {
     content: String,
@@ -51,6 +60,7 @@ impl From<String> for Text {
 }
 
 impl Text {
+    /// Creates a text leaf from any `Into<String>`.
     pub fn new(content: impl Into<String>) -> Self {
         Self {
             content: content.into(),
@@ -58,15 +68,18 @@ impl Text {
         }
     }
 
+    /// Replaces the style.
     pub fn with_style(mut self, style: TextStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Replaces the content; use this rather than reaching into the leaf.
     pub fn set_text(&mut self, text: impl Into<String>) {
         self.content = text.into();
     }
 
+    /// The current content.
     pub fn text(&self) -> &str {
         &self.content
     }

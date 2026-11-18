@@ -1,3 +1,4 @@
+//! Table: a scrollable table whose headers and cells are arbitrary views.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};

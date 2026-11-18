@@ -1,3 +1,4 @@
+//! Progress: a horizontal value meter with configurable presentations and smooth animation.
 use std::time::Duration;
 
 use ratatui::buffer::Buffer;

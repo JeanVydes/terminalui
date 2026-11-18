@@ -1,3 +1,4 @@
+//! Overlay: a modal scrim that consumes pointer events underneath it and dims content.
 use std::any::Any;
 
 use crossterm::event::MouseEventKind;

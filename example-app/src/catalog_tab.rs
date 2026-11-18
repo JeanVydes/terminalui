@@ -3,9 +3,6 @@
 use ratatui::layout::Constraint;
 use ratatui::style::Color;
 
-use terminalui::theme::Theme;
-use terminalui::Spacer;
-use terminalui::{node, Stack, Text, TextStyle, Tree};
 use terminalui::components::badge::{Badge, BadgeVariant};
 use terminalui::components::button::{Button, ButtonVariant};
 use terminalui::components::checkbox::{Checkbox, CheckboxStyle};
@@ -22,6 +19,9 @@ use terminalui::components::spinner::Spinner;
 use terminalui::components::table::{Table, TableCell, TableRow};
 use terminalui::components::toast::{Toast, ToastKind};
 use terminalui::components::tooltip::Tooltip;
+use terminalui::theme::Theme;
+use terminalui::Spacer;
+use terminalui::{node, Stack, Text, TextStyle, Tree};
 
 use crate::common::{breadcrumb, strip_node, tabs_node, TAB_CATALOG};
 

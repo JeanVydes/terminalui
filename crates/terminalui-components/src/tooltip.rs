@@ -1,3 +1,4 @@
+//! Tooltip: a floating hint anchored at a point; display-only.
 use std::time::Duration;
 
 use ratatui::buffer::Buffer;

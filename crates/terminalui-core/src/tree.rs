@@ -20,6 +20,7 @@ pub struct Tree {
 }
 
 impl Tree {
+    /// Creates a tree from a root [`Node`].
     pub fn new(root: Node) -> Self {
         Self { root, focus: None }
     }

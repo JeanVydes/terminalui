@@ -7,12 +7,12 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::Color;
 
-use terminalui::theme::Theme;
-use terminalui::{node, Stack, Text, TextStyle, Tree};
 use terminalui::components::breadcrumb::Breadcrumb;
 use terminalui::components::button::{Button, ButtonVariant};
 use terminalui::components::dialog::Dialog;
 use terminalui::components::tabs::Tabs;
+use terminalui::theme::Theme;
+use terminalui::{node, Stack, Text, TextStyle, Tree};
 
 pub(crate) const TAB_OVERVIEW: usize = 0;
 pub(crate) const TAB_DEPLOY: usize = 1;

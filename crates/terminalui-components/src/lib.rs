@@ -1,15 +1,40 @@
-//! Copyable components for terminalui.
+//! Ready-made components for terminalui.
 //!
-//! Every component is a plain view you can drop in any terminalui tree;
-//! no code generation, no CLI, no copying step.
+//! Every component is a self-contained view: it owns its geometry, its
+//! hit-testing and its input mechanics and reports outcomes through typed
+//! events. Nothing here makes decisions for you; the host wires component
+//! state to meaning.
 //!
-//! Customization:
+//! # Example
 //!
-//! - `terminalui_core::theme::Theme` is the global palette; pass your own instance
-//!   to every render call to reskin an entire app.
-//! - Every component exposes a per-instance `style` field
-//!   (`XxxStyle`, all-`Option` fields defaulting to the theme) plus a
-//!   `.with_style(...)` builder for chained construction.
+//! ```rust
+//! use terminalui_core::{node, Stack, Text, Tree};
+//! use terminalui_components::{button::{Button, ButtonVariant}, separator::Separator};
+//!
+//! let root = node("root", Stack::vertical().children(vec![
+//!     node("title", Text::new("status")),
+//!     node("sep", Separator::new()),
+//!     node("ok", Button::new(ButtonVariant::Primary, "Save")),
+//! ]));
+//! let _tree = Tree::new(root);
+//! ```
+//!
+//! # Customization
+//!
+//! Components use two layering tiers of configuration:
+//!
+//! - [`Theme`](terminalui_core::Theme) is the global palette. Pass your own
+//!   [`Theme`](terminalui_core::Theme) to every render call by constructing
+//!   the tree with it.
+//! - Every component exposes an `XxxStyle`, all-`Option`, defaulting to the
+//!   theme, plus a `.with_style(...)` builder for chained construction.
+//!
+//! # Serialization
+//!
+//! Every component serializes its full state to JSON through
+//! [`Tree::to_json`](terminalui_core::Tree::to_json), including private
+//! fields and composed children. [`Tree::inspect_outline`](terminalui_core::Tree::inspect_outline)
+//! gives a compact one-line-per-node outline for agents and logs.
 
 pub mod chrome;
 pub mod cursor;
@@ -36,7 +61,7 @@ pub mod icons;
 pub mod input;
 pub mod kbd;
 pub mod linechart;
-mod linefield;
+pub mod linefield;
 pub mod list;
 pub mod menu;
 pub mod overlay;

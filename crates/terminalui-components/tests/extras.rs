@@ -3,13 +3,13 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
-use terminalui_core::theme::Theme;
-use terminalui_core::{node, Stack, Text, Tree, View};
 use terminalui_components::gauge::Gauge;
 use terminalui_components::kbd::Kbd;
 use terminalui_components::popover::{Popover, PopoverArrow};
 use terminalui_components::statusbar::StatusBar;
 use terminalui_components::stepper::{Step, StepStatus, Stepper};
+use terminalui_core::theme::Theme;
+use terminalui_core::{node, Stack, Text, Tree, View};
 
 fn painted(tree: &mut Tree, area: Rect) -> String {
     let theme = Theme::default();

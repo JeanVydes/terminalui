@@ -1,3 +1,4 @@
+//! Button: the main interactive leaf. Composes a label, optional icon and a variant.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;

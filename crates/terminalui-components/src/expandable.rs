@@ -1,3 +1,4 @@
+//! Expandable: a collapsible section with a header row and a toggle chevron.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;

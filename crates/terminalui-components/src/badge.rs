@@ -1,3 +1,4 @@
+//! Badge: a small status pill for categories, counts and states.
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
@@ -15,15 +16,19 @@ use super::layout::{row, Align};
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum BadgeVariant {
+    /// No semantic significance; uses the theme secondary color.
     #[default]
     Neutral,
+    /// Positive/success state; uses the theme success color.
     Success,
+    /// Warning state; uses the theme warning color.
     Warning,
+    /// Error/destructive state; uses the theme destructive color.
     Destructive,
 }
 
-/// Per-instance overrides for a badge. Defaults match the theme.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+/// Per-instance overrides of colors and geometry for a badge. Defaults match the theme.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct BadgeStyle {
     /// Badge background. Defaults to the variant's color.
     pub background: Option<Color>,
@@ -33,15 +38,21 @@ pub struct BadgeStyle {
     pub padding_x: Option<u16>,
 }
 
+/// Public state of the badge: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct BadgeState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
+/// A small status pill for categories, counts and states.
 #[derive(Serialize)]
 pub struct Badge {
+    /// Semantic significance of the pill; colors a text with the theme.
     pub variant: BadgeVariant,
+    /// Per-instance overrides of colors and geometry.
     pub style: BadgeStyle,
+    /// Where the badge rendered in the last pass; the host may read it.
     pub state: BadgeState,
     children: Vec<Node>,
 }
@@ -67,11 +78,13 @@ impl Badge {
         }
     }
 
+    /// Builder shorthand: set the variant.
     pub fn with_variant(mut self, variant: BadgeVariant) -> Self {
         self.variant = variant;
         self
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: BadgeStyle) -> Self {
         self.style = style;
         self

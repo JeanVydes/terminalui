@@ -3,9 +3,9 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+use terminalui_components::input::Input;
 use terminalui_core::input::InputEvent;
 use terminalui_core::{node, Stack, Tree};
-use terminalui_components::input::Input;
 
 fn key(code: KeyCode) -> InputEvent {
     InputEvent::Key(KeyEvent::new(code, KeyModifiers::NONE))

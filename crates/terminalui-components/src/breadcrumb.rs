@@ -1,3 +1,4 @@
+//! Breadcrumb: the trail from root to current inside the current area.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};

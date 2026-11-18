@@ -1,3 +1,4 @@
+//! ResizableGrid: a two-pane grid with keyboard-resizable dividers.
 use super::presentation::RenderStyle;
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;

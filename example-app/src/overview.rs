@@ -3,8 +3,6 @@
 use ratatui::layout::Constraint;
 use ratatui::style::Color;
 
-use terminalui::theme::Theme;
-use terminalui::{node, Stack, Text, TextStyle, Tree};
 use terminalui::components::badge::{Badge, BadgeVariant};
 use terminalui::components::button::{Button, ButtonVariant};
 use terminalui::components::form::{Form, FormField};
@@ -14,6 +12,8 @@ use terminalui::components::input::Input;
 use terminalui::components::list::{List, Marker};
 use terminalui::components::pagination::Pagination;
 use terminalui::components::table::{Table, TableCell, TableRow};
+use terminalui::theme::Theme;
+use terminalui::{node, Stack, Text, TextStyle, Tree};
 
 use crate::common::{
     breadcrumb, muted, stack_root, strip_node, tabs_node, PAGE_SIZE, TAB_DEPLOY, TAB_HELP,

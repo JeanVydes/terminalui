@@ -15,6 +15,7 @@ use terminalui_core::{Context, Outcome, View};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct KbdState {
+    /// Last rendered area, set during render.
     pub area: Rect,
 }
 
@@ -32,12 +33,16 @@ pub struct KbdStyle {
 /// plus [`terminalui_core::Text`].
 #[derive(Serialize)]
 pub struct Kbd {
+    /// The key text, e.g. `Ctrl`, `Enter`, `F1`.
     pub key: String,
+    /// Where the cap rendered in the last pass.
     pub state: KbdState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: KbdStyle,
 }
 
 impl Kbd {
+    /// Creates a key cap with the given key text.
     pub fn new(key: impl Into<String>) -> Self {
         Self {
             key: key.into(),
@@ -48,6 +53,7 @@ impl Kbd {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: KbdStyle) -> Self {
         self.style = style;
         self

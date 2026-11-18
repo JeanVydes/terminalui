@@ -21,12 +21,18 @@ use super::scroll::{clamp_view, render_scrollbar, Scroll};
 
 const MAX_VISIBLE: usize = 5;
 
+/// Public state of the inline field and the popup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AutocompleteState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the inline field is focused by the tree.
     pub focused: bool,
+    /// Whether the suggestion popup is open.
     pub open: bool,
+    /// Index of the highlighted suggestion inside the filtered view.
     pub highlight: usize,
+    /// First visible suggestion index when the list overflows.
     pub offset: usize,
 }
 
@@ -34,8 +40,11 @@ pub struct AutocompleteState {
 /// host feeds the candidate list; the component filters it while typing.
 #[derive(Serialize)]
 pub struct Autocomplete {
+    /// The public state of the inline field and the popup visibility.
     pub state: AutocompleteState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: MenuStyle,
+    /// The candidate suggestions shown in the popup.
     pub suggestions: Vec<String>,
     field: LineField,
     #[serde(skip)]
@@ -43,6 +52,7 @@ pub struct Autocomplete {
 }
 
 impl Autocomplete {
+    /// Creates an autocomplete with the given suggestions. Starts empty, closed, not focused.
     pub fn new(suggestions: Vec<String>) -> Self {
         Self {
             state: AutocompleteState {
@@ -59,6 +69,7 @@ impl Autocomplete {
         }
     }
 
+    /// Replace the style.
     pub fn with_style(mut self, style: MenuStyle) -> Self {
         self.style = style;
         self
@@ -70,10 +81,12 @@ impl Autocomplete {
         self.clamp_highlight();
     }
 
+    /// The inline text currently in the field.
     pub fn value(&self) -> &str {
         &self.field.value
     }
 
+    /// Clear the field, its selection and its suggestion highlight.
     pub fn clear(&mut self) {
         self.field.clear();
         self.clamp_highlight();

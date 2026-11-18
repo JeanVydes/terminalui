@@ -9,8 +9,8 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use serde::Serialize;
 
-use terminalui_core::theme::Theme;
 use terminalui_animations::lerp_color;
+use terminalui_core::theme::Theme;
 
 /// Border glyph set. Terminals cannot express arbitrary border shapes, so
 /// the radius is expressed through the rounded set instead.
@@ -18,11 +18,16 @@ use terminalui_animations::lerp_color;
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum BorderSet {
+    /// Plain glyph set: `─ │ ┌ ┐ └ ┘`.
     #[default]
     Plain,
+    /// Thick strokes: `━ ┃ ┏ ┓ ┗ ┛`.
     Thick,
+    /// Double strokes: `═ ║ ╔ ╗ ╚ ╝`.
     Double,
+    /// Rounded corners with plain single-line strokes.
     Rounded,
+    /// Dashed strokes: `╌ ╎` with plain corners.
     Dashed,
     /// Blank cells: the border reserves its rectangle but paints nothing.
     Blank,
@@ -67,8 +72,10 @@ impl BorderSet {
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Radius {
+    /// No radius.
     #[default]
     None,
+    /// Rounded corners.
     Small,
 }
 
@@ -77,8 +84,13 @@ pub enum Radius {
 /// any diagonal in between works the same way.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Gradient {
+    /// Color at one end of the gradient axis.
     pub start: Color,
+    /// Color at the other end of the gradient axis.
     pub end: Color,
+    /// Travel direction in degrees. Clockwise: `0°` left to right,
+    /// `90°` top to bottom, `180°` right to left, `270°` bottom to top.
+    /// Any diagonal in between works the same way.
     pub angle: f64,
 }
 
@@ -118,15 +130,20 @@ impl Gradient {
 /// cell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 pub struct Border {
+    /// Glyph set to paint the border with.
     pub set: BorderSet,
+    /// Foreground color of the border glyphs; defaults to `theme.border`.
     pub color: Option<Color>,
+    /// Corner radius for this border.
     pub radius: Radius,
 }
 
 /// Interior spacing in cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 pub struct Padding {
+    /// Cells of padding on the left and right.
     pub horizontal: u16,
+    /// Cells of padding on the top and bottom.
     pub vertical: u16,
 }
 
@@ -151,10 +168,12 @@ pub struct Chrome {
 }
 
 impl Chrome {
+    /// `Chrome` with nothing set: no border, no background, no padding.
     pub fn transparent() -> Self {
         Self::default()
     }
 
+    /// `Chrome` with only a background fill and no border or padding.
     pub fn filled(background: Color) -> Self {
         Self {
             background: Some(background),
@@ -162,6 +181,7 @@ impl Chrome {
         }
     }
 
+    /// `Chrome` with a border (`set` glyph set, `color`, no radius or padding).
     pub fn bordered(set: BorderSet, color: Option<Color>) -> Self {
         Self {
             border: Some(Border {

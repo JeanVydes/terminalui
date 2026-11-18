@@ -2,8 +2,6 @@
 //! the tuning knobs that reshape the kit's ink ramps, all independent.
 
 use ratatui::layout::Constraint;
-use terminalui::theme::Theme;
-use terminalui::{node, Stack, Text, TextStyle, Tree};
 use terminalui::components::boxplot::{BoxPlot, BoxPlotStyle};
 use terminalui::components::chrome::{BorderSet, Chrome, Padding};
 use terminalui::components::panel::Panel;
@@ -12,6 +10,8 @@ use terminalui::components::progress::Progress;
 use terminalui::components::select::Select;
 use terminalui::components::slider::Slider;
 use terminalui::components::spinner::Spinner;
+use terminalui::theme::Theme;
+use terminalui::{node, Stack, Text, TextStyle, Tree};
 
 use crate::common::{breadcrumb, muted, strip_node, TAB_STYLES};
 use crate::latency::LatencyMonitor;

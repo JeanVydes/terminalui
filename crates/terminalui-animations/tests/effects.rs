@@ -6,8 +6,8 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 
-use terminalui_core::theme::Theme;
 use terminalui_animations::{Animation, Direction, Easing, Effect, RadialMode};
+use terminalui_core::theme::Theme;
 
 fn sample_src(area: Rect) -> Buffer {
     let mut buf = Buffer::empty(area);

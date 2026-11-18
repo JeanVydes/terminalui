@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-use terminalui_core::{node, Stack, Text, Tree};
 use terminalui_components::button::{Button, ButtonVariant};
 use terminalui_components::checkbox::Checkbox;
 use terminalui_components::form::FormField;
@@ -15,6 +14,7 @@ use terminalui_components::select::Select;
 use terminalui_components::slider::Slider;
 use terminalui_components::table::{Table, TableCell, TableRow};
 use terminalui_components::toast::{Toast, ToastKind};
+use terminalui_core::{node, Stack, Text, Tree};
 
 fn tree() -> Tree {
     let mut button = Button::new(ButtonVariant::Primary, "Save");

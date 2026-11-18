@@ -1,10 +1,10 @@
 //! The market tab: four candle charts with composed captions.
 
-use terminalui::theme::Theme;
-use terminalui::{node, Text, TextStyle, Tree};
 use terminalui::components::badge::{Badge, BadgeVariant};
 use terminalui::components::candlechart::CandleChart;
 use terminalui::components::grid::ResizableGrid;
+use terminalui::theme::Theme;
+use terminalui::{node, Text, TextStyle, Tree};
 
 use crate::common::{breadcrumb, stack_root, strip_node, tabs_node, TAB_MARKET};
 use crate::market::{InventedMarket, Timeframe};

@@ -12,14 +12,17 @@ pub enum Outcome {
 }
 
 impl Outcome {
+    /// `true` if the view claimed the event (`Consumed`).
     pub fn is_consumed(self) -> bool {
         matches!(self, Outcome::Consumed)
     }
 
+    /// `true` if the view let the event continue (`Ignored`).
     pub fn is_ignored(self) -> bool {
         matches!(self, Outcome::Ignored)
     }
 
+    /// `Outcome::Consumed`; lets a view claim an event in one move.
     pub fn consumed(self) -> Self {
         Outcome::Consumed
     }

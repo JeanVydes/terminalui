@@ -1,3 +1,4 @@
+//! Form: validated label/input pairs that collect and hold form state.
 use crossterm::event::{KeyCode, KeyEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;

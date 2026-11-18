@@ -1,3 +1,4 @@
+//! Spinner: a rotating glyph for indeterminate or busy states.
 use std::time::Duration;
 
 use ratatui::buffer::Buffer;

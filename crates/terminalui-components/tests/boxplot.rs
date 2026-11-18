@@ -6,10 +6,10 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use serde_json::Value;
 
-use terminalui_core::theme::Theme;
-use terminalui_core::{node, Text, Tree};
 use terminalui_components::boxplot::{BoxPlot, BoxPlotRow};
 use terminalui_components::presentation::RenderStyle;
+use terminalui_core::theme::Theme;
+use terminalui_core::{node, Text, Tree};
 
 fn row(low: f64, q1: f64, median: f64, q3: f64, high: f64) -> BoxPlotRow {
     BoxPlotRow::new(low, q1, median, q3, high)

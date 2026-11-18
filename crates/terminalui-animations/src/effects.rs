@@ -25,9 +25,13 @@ use terminalui_core::theme::Theme;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Direction {
     #[default]
+    /// Slide starts on the left edge and lands on the right.
     Left,
+    /// Slide starts on the right edge and lands on the left.
     Right,
+    /// Slide starts on the top edge and lands on the bottom.
     Up,
+    /// Slide starts on the bottom edge and lands on the top.
     Down,
 }
 
@@ -58,14 +62,20 @@ pub enum Effect {
     FadeOut,
     /// Slides the content into place from `direction`.
     SlideIn {
+        /// Where the slide starts from.
         direction: Direction,
+        /// How far it travels from `direction`, in cells.
         distance: u16,
+        /// Easing applied to the slide motion.
         easing: crate::Easing,
     },
     /// Slides the content out toward `direction`.
     SlideOut {
+        /// Where the slide ends up.
         direction: Direction,
+        /// How far it travels to `direction`, in cells.
         distance: u16,
+        /// Easing applied to the slide motion.
         easing: crate::Easing,
     },
     /// Reveals the content from left to right.
@@ -77,13 +87,28 @@ pub enum Effect {
     /// Reveals the content from bottom to top.
     RevealUp,
     /// Sweep reveal with a bright leading edge over the content.
-    SweepRight { color: Option<Color> },
+    SweepRight {
+        /// Color of the leading edge; defaults to `theme.accent`.
+        color: Option<Color>,
+    },
     /// Sweep reveal with a bright leading edge, right to left.
-    SweepLeft { color: Option<Color> },
+    /// Sweep reveal with a bright leading edge, right to left.
+    SweepLeft {
+        /// Color of the leading edge; defaults to `theme.accent`.
+        color: Option<Color>,
+    },
     /// Thanos-style disintegration: cells turn to ash that drifts up and fades.
-    Thanos { seed: u64 },
+    /// Thanos-style disintegration: cells turn to ash that drifts up and fades.
+    Thanos {
+        /// The deterministic seed driving the cell assignment.
+        seed: u64,
+    },
     /// Dissolve in/out: scattered cells vanish and reappear.
-    Dissolve { seed: u64 },
+    /// Dissolve in/out: scattered cells vanish and reappear.
+    Dissolve {
+        /// The deterministic seed driving the cell assignment.
+        seed: u64,
+    },
     /// Cells rain downward and out of the area.
     Fall,
     /// A bright reflective band sweeping left to right (or mirrored with
@@ -114,6 +139,7 @@ pub enum Effect {
     /// Timing lives in your [`crate::Animation`]; the effect only owns the
     /// look. Works on anything that paints into a buffer.
     RadialFlare {
+        /// Which radial behavior to use (expand, converge, collide).
         mode: RadialMode,
         /// Thickness of the bright ring in cells.
         width: u16,
@@ -128,6 +154,7 @@ pub enum Effect {
     ///
     /// Timing lives in your [`crate::Animation`].
     FlareBidir {
+        /// Travel direction in degrees (see [`Effect::Flare`]).
         angle: f64,
         /// Thickness of the bright bands in cells.
         width: u16,

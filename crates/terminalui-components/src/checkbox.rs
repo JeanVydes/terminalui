@@ -1,3 +1,4 @@
+//! Checkbox: a labelled toggle with [x] / [ ] states and an optional border.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;

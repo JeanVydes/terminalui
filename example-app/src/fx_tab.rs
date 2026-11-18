@@ -1,9 +1,9 @@
 //! The fx tab: every easing/transition in terminalui-animations, looped.
 
-use terminalui::theme::Theme;
-use terminalui::{node, Text, TextStyle, Tree};
 use terminalui::components::grid::ResizableGrid;
 use terminalui::components::panel::Panel;
+use terminalui::theme::Theme;
+use terminalui::{node, Text, TextStyle, Tree};
 
 use crate::common::{breadcrumb, stack_root, strip_node, tabs_node, TAB_FX};
 use terminalui::{Direction, Effect};

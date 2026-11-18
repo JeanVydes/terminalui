@@ -13,14 +13,19 @@ use crate::outline::quoted;
 use crate::theme::Theme;
 use crate::view::View;
 
+/// Direction the stack lays out its children.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum StackDirection {
+    /// Children stack top to bottom.
     Vertical,
+    /// Children lay out left to right.
     Horizontal,
 }
 
+/// Stack is the primary container: it lays out composable children along
+/// one axis with optional constraints and gap.
 #[derive(Serialize)]
 pub struct Stack {
     children: Vec<Node>,
@@ -66,10 +71,12 @@ where
 }
 
 impl Stack {
+    /// A vertical stack.
     pub fn vertical() -> Self {
         Self::new(StackDirection::Vertical)
     }
 
+    /// A horizontal stack.
     pub fn horizontal() -> Self {
         Self::new(StackDirection::Horizontal)
     }
@@ -83,16 +90,20 @@ impl Stack {
         }
     }
 
+    /// Sets the children; builder style (consumes and returns `self`).
     pub fn children(mut self, children: Vec<Node>) -> Self {
         self.children = children;
         self
     }
 
+    /// Cells between children. Default `0`.
     pub fn gap(mut self, gap: u16) -> Self {
         self.gap = gap;
         self
     }
 
+    /// Layout constraints, one per child. Children without a constraint
+    /// share the remaining space with `Fill(1)`.
     /// Layout constraints, one per child. Children without a constraint
     /// share the remaining space with `Fill(1)`.
     pub fn constraints(mut self, constraints: Vec<Constraint>) -> Self {

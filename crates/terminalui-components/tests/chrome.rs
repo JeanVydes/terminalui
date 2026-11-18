@@ -5,10 +5,10 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Color;
 
-use terminalui_core::theme::Theme;
 use terminalui_components::chrome::{
     draw_box, Border, BorderSet, Chrome, Gradient, Padding, Radius,
 };
+use terminalui_core::theme::Theme;
 
 fn theme() -> Theme {
     Theme::default()

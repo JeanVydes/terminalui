@@ -1,3 +1,4 @@
+//! CandleChart: OHLC candles with capacity, zoom, scroll and a live-edge readout.
 use crossterm::event::{KeyCode, KeyEventKind, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;

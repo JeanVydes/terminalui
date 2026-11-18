@@ -21,7 +21,9 @@ const AXIS_WIDTH: u16 = 8;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LineChartState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the chart would hold focus by the tree. Charts are display-only.
     pub focused: bool,
 }
 
@@ -42,7 +44,9 @@ pub struct LineChartStyle {
 /// order; keep feeding [`LineChart::push`] to watch a live value.
 #[derive(Serialize)]
 pub struct LineChart {
+    /// Last rendered area, set during render.
     pub state: LineChartState,
+    /// Per-instance overrides; defaults match the theme.
     pub style: LineChartStyle,
     /// Which glyph set paints the line. Defaults to [`RenderStyle::Native`].
     pub presentation: RenderStyle,
@@ -55,6 +59,7 @@ pub struct LineChart {
 }
 
 impl LineChart {
+    /// Creates an empty chart. Series starts empty; the domain auto-fits.
     pub fn new() -> Self {
         Self {
             state: LineChartState {
@@ -70,16 +75,19 @@ impl LineChart {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: LineChartStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: pick the glyph set.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self
     }
 
+    /// Builder shorthand: set the shading knobs for non-`Native` presentations.
     pub fn with_tuning(mut self, tuning: StyleTuning) -> Self {
         self.tuning = tuning;
         self
@@ -99,6 +107,7 @@ impl LineChart {
         self
     }
 
+    /// Replace the series entirely; non-finite values dropped, truncated to `MAX_HISTORY`.
     pub fn set_series(&mut self, series: Vec<f64>) {
         self.series = series
             .into_iter()
@@ -118,10 +127,12 @@ impl LineChart {
         }
     }
 
+    /// Number of samples currently held.
     pub fn len(&self) -> usize {
         self.series.len()
     }
 
+    /// `true` when there is nothing to draw.
     pub fn is_empty(&self) -> bool {
         self.series.is_empty()
     }

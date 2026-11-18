@@ -10,10 +10,12 @@ use crate::outcome::Outcome;
 use crate::theme::Theme;
 use crate::view::View;
 
+/// Fills the remaining space along its parent's main axis, rendering nothing.
 #[derive(Serialize)]
 pub struct Spacer;
 
 impl Spacer {
+    /// Creates a `Spacer` leaf; layout allocates every free cell to it.
     pub fn new() -> Self {
         Self
     }

@@ -1,3 +1,4 @@
+//! Pagination: a page pager with jump buttons and a current-page indicator.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};

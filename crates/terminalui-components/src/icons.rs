@@ -7,32 +7,57 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Icon {
+    /// A check mark (`✓`).
     Check,
+    /// A cross mark (`✗`).
     X,
+    /// Left chevron (`‹`).
     ChevronLeft,
+    /// Right chevron (`›`).
     ChevronRight,
+    /// Small up chevron (`▴`).
     ChevronUp,
+    /// Small down chevron (`▾`).
     ChevronDown,
+    /// Left arrow (`←`).
     ArrowLeft,
+    /// Right arrow (`→`).
     ArrowRight,
+    /// Up arrow (`↑`).
     ArrowUp,
+    /// Down arrow (`↓`).
     ArrowDown,
+    /// Plus sign (`+`).
     Plus,
+    /// Minus sign (`−`).
     Minus,
     /// Vim-style search glyph.
     Search,
+    /// Information glyph (`ℹ`).
     Info,
+    /// Warning glyph (`⚠`).
     Warning,
+    /// Error glyph (`✖`).
     Error,
+    /// Question mark (`?`).
     Question,
+    /// Filled star (`★`).
     Star,
+    /// Outlined star (`☆`).
     StarOutline,
+    /// Outlined circle (`○`).
     Circle,
+    /// Filled circle (`●`).
     CircleFilled,
+    /// Middle dot (`·`).
     Dot,
+    /// Horizontal ellipsis (`…`).
     Ellipsis,
+    /// House glyph (`⌂`).
     Home,
+    /// Hamburger menu (`☰`).
     Menu,
+    /// External-link arrow (`↗`).
     ExternalLink,
 }
 

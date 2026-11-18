@@ -20,7 +20,9 @@ const AXIS_WIDTH: u16 = 8;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct BarChartState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Whether the chart would hold focus by the tree. Charts are display-only.
     pub focused: bool,
 }
 
@@ -39,7 +41,9 @@ pub struct BarChartStyle {
 /// in a row under the baseline when [`BarChart::with_labels`] sets them.
 #[derive(Serialize)]
 pub struct BarChart {
+    /// Where the chart rendered in the last pass; the host may read it.
     pub state: BarChartState,
+    /// Colors; defaults match the theme.
     pub style: BarChartStyle,
     /// Which glyph set paints the bars. Defaults to [`RenderStyle::Native`].
     pub presentation: RenderStyle,
@@ -52,6 +56,7 @@ pub struct BarChart {
 }
 
 impl BarChart {
+    /// Creates an empty bar chart. Values and labels start empty.
     pub fn new() -> Self {
         Self {
             state: BarChartState {
@@ -67,11 +72,13 @@ impl BarChart {
         }
     }
 
+    /// Builder shorthand: replace the style.
     pub fn with_style(mut self, style: BarChartStyle) -> Self {
         self.style = style;
         self
     }
 
+    /// Builder shorthand: pick the glyph set.
     pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
         self.presentation = presentation;
         self

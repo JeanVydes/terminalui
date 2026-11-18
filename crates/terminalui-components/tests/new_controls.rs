@@ -5,15 +5,15 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent,
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
-use terminalui_core::input::InputEvent;
-use terminalui_core::theme::Theme;
-use terminalui_core::{node, Stack, Tree};
 use terminalui_components::linechart::LineChart;
 use terminalui_components::radio::RadioGroup;
 use terminalui_components::sparkline::Sparkline;
 use terminalui_components::stat::{Stat, StatTone};
 use terminalui_components::switch::Switch;
 use terminalui_components::treeview::{TreeNode, TreeView};
+use terminalui_core::input::InputEvent;
+use terminalui_core::theme::Theme;
+use terminalui_core::{node, Stack, Tree};
 
 fn key(code: KeyCode) -> InputEvent {
     InputEvent::Key(KeyEvent::new(code, KeyModifiers::NONE))

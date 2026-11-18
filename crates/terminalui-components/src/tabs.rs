@@ -1,3 +1,4 @@
+//! Tabs: a horizontal tab strip; selected driven by `selected`.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};

@@ -1,3 +1,4 @@
+//! Select: a dropdown trigger that opens a list of options.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};

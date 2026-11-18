@@ -1,3 +1,4 @@
+//! Toast: a transient notification with kind styling that fades after its TTL.
 use std::time::Duration;
 
 use ratatui::buffer::Buffer;

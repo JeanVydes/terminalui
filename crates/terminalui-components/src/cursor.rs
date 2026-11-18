@@ -36,7 +36,9 @@ pub enum CursorMode {
 /// the `with_*` builders for ergonomic chaining.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct CursorStyle {
+    /// Shape of the caret cell.
     pub shape: CursorShape,
+    /// Visibility behavior of the caret.
     pub mode: CursorMode,
     /// Half-period of the blink in milliseconds.
     pub blink_ms: u64,
@@ -59,26 +61,31 @@ impl Default for CursorStyle {
 }
 
 impl CursorStyle {
+    /// Builder shorthand: set the caret shape.
     pub fn with_shape(mut self, shape: CursorShape) -> Self {
         self.shape = shape;
         self
     }
 
+    /// Builder shorthand: set the visibility mode.
     pub fn with_mode(mut self, mode: CursorMode) -> Self {
         self.mode = mode;
         self
     }
 
+    /// Builder shorthand: set the blink half-period in milliseconds.
     pub fn with_blink_ms(mut self, blink_ms: u64) -> Self {
         self.blink_ms = blink_ms;
         self
     }
 
+    /// Builder shorthand: set the opacity in `0..=1`.
     pub fn with_opacity(mut self, opacity: f64) -> Self {
         self.opacity = opacity.clamp(0.0, 1.0);
         self
     }
 
+    /// Builder shorthand: set the pulse easing curve.
     pub fn with_easing(mut self, easing: Easing) -> Self {
         self.easing = easing;
         self

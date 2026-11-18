@@ -25,10 +25,12 @@ impl Animation {
         }
     }
 
+    /// The easing curve the animation reports progress with.
     pub fn easing(&self) -> Easing {
         self.easing
     }
 
+    /// Total duration of the animation.
     pub fn duration(&self) -> Duration {
         self.duration
     }

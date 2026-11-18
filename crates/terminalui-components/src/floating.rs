@@ -1,3 +1,4 @@
+//! FloatingBox: an anchored floating box that composites arbitrary children.
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Color;

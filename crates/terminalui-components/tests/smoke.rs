@@ -6,9 +6,6 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent,
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
-use terminalui_core::input::InputEvent;
-use terminalui_core::theme::Theme;
-use terminalui_core::{node, Stack, Text, Tree};
 use terminalui_components::badge::{Badge, BadgeVariant};
 use terminalui_components::boxplot::{BoxPlot, BoxPlotRow};
 use terminalui_components::breadcrumb::Breadcrumb;
@@ -28,6 +25,9 @@ use terminalui_components::table::{Table, TableCell, TableRow};
 use terminalui_components::tabs::{Tab, Tabs};
 use terminalui_components::toast::{Toast, ToastKind};
 use terminalui_components::tooltip::Tooltip;
+use terminalui_core::input::InputEvent;
+use terminalui_core::theme::Theme;
+use terminalui_core::{node, Stack, Text, Tree};
 
 fn id(name: &str) -> String {
     name.to_string()
@@ -854,7 +854,10 @@ fn candlechart_wheel_on_time_axis_zooms_candle_width() {
 #[test]
 fn grid_resize_divider_programmatically() {
     let area = Rect::new(0, 0, 40, 5);
-    let mut tree = Tree::new(terminalui_core::node("grid", ResizableGrid::row(vec![1, 1])));
+    let mut tree = Tree::new(terminalui_core::node(
+        "grid",
+        ResizableGrid::row(vec![1, 1]),
+    ));
     let mut buffer = Buffer::empty(area);
     let theme = theme();
     tree.render(area, &mut buffer, &theme);
@@ -871,7 +874,10 @@ fn grid_resize_divider_programmatically() {
 #[test]
 fn grid_set_divider_size_clamps_to_minimum() {
     let area = Rect::new(0, 0, 40, 5);
-    let mut tree = Tree::new(terminalui_core::node("grid", ResizableGrid::row(vec![1, 1])));
+    let mut tree = Tree::new(terminalui_core::node(
+        "grid",
+        ResizableGrid::row(vec![1, 1]),
+    ));
     let mut buffer = Buffer::empty(area);
     let theme = theme();
     tree.render(area, &mut buffer, &theme);
@@ -887,7 +893,10 @@ fn grid_set_divider_size_clamps_to_minimum() {
 #[test]
 fn grid_set_weights_rescales_panes() {
     let area = Rect::new(0, 0, 40, 5);
-    let mut tree = Tree::new(terminalui_core::node("grid", ResizableGrid::row(vec![1, 3])));
+    let mut tree = Tree::new(terminalui_core::node(
+        "grid",
+        ResizableGrid::row(vec![1, 3]),
+    ));
     let mut buffer = Buffer::empty(area);
     let theme = theme();
     tree.render(area, &mut buffer, &theme);
@@ -1041,9 +1050,9 @@ fn input_multiline_accepts_typed_text() {
 
 #[test]
 fn multiline_input_receives_keys_after_many_focus_siblings() {
-    use terminalui_core::{Stack, Text};
     use terminalui_components::breadcrumb::Breadcrumb;
     use terminalui_components::checkbox::Checkbox;
+    use terminalui_core::{Stack, Text};
 
     let buttons = Stack::horizontal().gap(1).children(vec![
         node("primary", Button::new(ButtonVariant::Primary, "Primary")),

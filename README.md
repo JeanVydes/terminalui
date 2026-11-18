@@ -7,25 +7,23 @@ loop glued together by hand. terminalui gives them a real tree: typed views,
 focus management, events, layout, and ready-made components, so the structure
 of a screen can be declared once and reused.
 
-## Crates
+## Install
 
-| Crate | Purpose |
-|---|---|
-| `terminalui` | View tree, focus, layout, events, serialization |
-| `terminalui-animations` | Easings and buffer effects (fade, slide, dissolve, radial flare) |
-| `terminalui-components` | Buttons, inputs, tables, selects, charts, dialogs, and the rest |
-
-## Quickstart
+Add `terminalui` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
 terminalui = "0.1"
-terminalui-components = { version = "0.1", features = [] }
 ```
+
+`terminalui` re-exports the full toolkit: the view-tree runtime, the
+animations crate and the component library. Depending on it is enough.
+
+## Example
 
 ```rust
 use terminalui::{node, Stack, Text, Tree};
-use terminalui_components::button::{Button, ButtonVariant};
+use terminalui::components::button::{Button, ButtonVariant};
 
 let root = node("root", Stack::vertical()
     .gap(1)
@@ -35,6 +33,14 @@ let root = node("root", Stack::vertical()
     ]));
 let mut tree = Tree::new(root);
 ```
+
+The crates under the facade, in case you want to depend on one alone:
+
+| Crate | Purpose |
+|---|---|
+| `terminalui-core` | View tree, focus, layout, events, serialization |
+| `terminalui-animations` | Easings and buffer effects (fade, slide, dissolve, radial flare) |
+| `terminalui-components` | Buttons, inputs, tables, selects, charts, dialogs, and the rest |
 
 ## Requirements
 

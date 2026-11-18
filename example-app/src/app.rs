@@ -10,10 +10,6 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 
-use terminalui::input::InputEvent;
-use terminalui::theme::Theme;
-use terminalui::Text;
-use terminalui::Tree;
 use terminalui::components::boxplot::BoxPlot;
 use terminalui::components::breadcrumb::Breadcrumb;
 use terminalui::components::button::Button;
@@ -26,6 +22,10 @@ use terminalui::components::presentation::{RenderStyle, StyleTuning};
 use terminalui::components::select::Select;
 use terminalui::components::table::Table;
 use terminalui::components::tabs::Tabs;
+use terminalui::input::InputEvent;
+use terminalui::theme::Theme;
+use terminalui::Text;
+use terminalui::Tree;
 
 use crate::catalog_tab::build_catalog_tree;
 use crate::colors_tab::build_colors_tree;

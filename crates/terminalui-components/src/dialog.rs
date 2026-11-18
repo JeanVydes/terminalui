@@ -1,3 +1,4 @@
+//! Dialog: a modal overlay with a centered content box. Host-composed content.
 use std::any::Any;
 use std::time::Duration;
 

@@ -1,3 +1,4 @@
+//! List: a selectable list with per-item markers or composed icons.
 use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};
@@ -34,9 +35,13 @@ pub enum Marker {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ListState {
+    /// Last rendered area, set during render.
     pub area: Rect,
+    /// Index of the highlighted item.
     pub selected: usize,
+    /// First visible item when the list overflows.
     pub offset: usize,
+    /// Whether the list would hold focus by the tree.
     pub focused: bool,
 }
 
@@ -63,8 +68,11 @@ pub struct ListStyle {
 /// interaction. Hosts that need typed activation read [`List::selected`].
 #[derive(Serialize)]
 pub struct List {
+    /// How each item is prefixed.
     pub marker: Marker,
+    /// Per-instance overrides; defaults match the theme.
     pub style: ListStyle,
+    /// Public state: selection and visibility.
     pub state: ListState,
     children: Vec<Node>,
     hit_areas: Vec<Rect>,
@@ -138,6 +146,7 @@ impl List {
     }
 }
 impl List {
+    /// Compose a list from arbitrary views, one per item.
     /// Compose a list from arbitrary views, one per item.
     pub fn new(children: Vec<Node>) -> Self {
         Self {

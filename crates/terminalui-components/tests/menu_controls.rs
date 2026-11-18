@@ -5,14 +5,14 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent,
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
-use terminalui_core::input::InputEvent;
-use terminalui_core::theme::Theme;
-use terminalui_core::{node, Stack, Tree, View};
 use terminalui_components::autocomplete::Autocomplete;
 use terminalui_components::commandpalette::{Command, CommandPalette};
 use terminalui_components::contextmenu::ContextMenu;
 use terminalui_components::dropdown::DropdownMenu;
 use terminalui_components::menu::{MenuEntry, MenuItem};
+use terminalui_core::input::InputEvent;
+use terminalui_core::theme::Theme;
+use terminalui_core::{node, Stack, Tree, View};
 
 fn key(code: KeyCode) -> InputEvent {
     InputEvent::Key(KeyEvent::new(code, KeyModifiers::NONE))

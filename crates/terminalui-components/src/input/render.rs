@@ -5,9 +5,9 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 
+use terminalui_animations::lerp_color;
 use terminalui_core::theme::Theme;
 use terminalui_core::Context;
-use terminalui_animations::lerp_color;
 
 use super::super::cursor::CursorShape;
 use super::Input;

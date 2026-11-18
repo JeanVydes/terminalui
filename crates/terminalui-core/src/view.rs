@@ -12,9 +12,19 @@ use crate::node::Node;
 use crate::outcome::Outcome;
 use crate::theme::Theme;
 
+/// A composable view in the tree.
+///
+/// Implement this trait to add behavior to the tree. Views own their
+/// geometry, input handling and focus semantics; the host drives rendering,
+/// timing and the meaning of events.
+///
+/// Views are type-erased through `Any`. If you need to reach a concrete view
+/// from outside the tree (e.g. in a test), use [`View::as_any_ref`] with a
+/// typed query.
 pub trait View: Any + erased_serde::Serialize {
     /// Type erasure hook. Required for typed queries through the tree.
     fn as_any(&mut self) -> &mut dyn Any;
+    /// Read-only type erasure hook. Required for typed queries through the tree.
     fn as_any_ref(&self) -> &dyn Any;
 
     /// Stable tag used by the outline and JSON output.
