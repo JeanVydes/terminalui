@@ -3,3 +3,5 @@
 .commandcode/
 AGENTS.md
 docs/PLAN.md
+example-app/
+Cargo.lock
