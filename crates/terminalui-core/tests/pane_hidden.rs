@@ -72,6 +72,33 @@ fn hidden_pages_keep_state_but_receive_no_events() {
 }
 
 #[test]
+fn hidden_pages_do_not_shift_focus_indexes() {
+    let mut tree = Tree::new(node(
+        "root",
+        Pane::new(vec![page("first"), page("second"), page("third")]),
+    ));
+
+    assert_eq!(tree.focusable_ids(), ["root", "first"]);
+    assert!(tree.focus("first"));
+    assert_eq!(tree.focused_id(), Some("first"));
+
+    let root = tree.find_mut::<Pane>("root").expect("root pane");
+    root.set_visible(2);
+    assert!(tree.focus("third"));
+    assert_eq!(tree.focused_id(), Some("third"));
+
+    tree.handle_event(&sample_key());
+    let third = tree
+        .find::<Probe>("third")
+        .expect("visible page is focusable");
+    assert_eq!(third.events, 1);
+    let second = tree
+        .find::<Probe>("second")
+        .expect("hidden page stays queryable");
+    assert_eq!(second.events, 0);
+}
+
+#[test]
 fn tree_queries_reach_hidden_pages() {
     let mut tree = Tree::new(node("root", Pane::new(vec![page("first"), page("second")])));
 

@@ -265,6 +265,9 @@ fn walk_mut(node: &mut Node, f: &mut dyn FnMut(&mut Node)) {
 }
 
 fn find_focusable_index(node: &Node, id: &str, counter: &mut usize) -> Option<usize> {
+    if node.hidden {
+        return None;
+    }
     if node.view.focusable() {
         if node.id() == id {
             return Some(*counter);
@@ -280,6 +283,9 @@ fn find_focusable_index(node: &Node, id: &str, counter: &mut usize) -> Option<us
 }
 
 fn find_focusable_id<'a>(node: &'a Node, index: usize, counter: &mut usize) -> Option<&'a str> {
+    if node.hidden {
+        return None;
+    }
     if node.view.focusable() {
         if *counter == index {
             return Some(&node.id);
