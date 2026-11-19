@@ -48,6 +48,7 @@
 pub mod context;
 pub mod input;
 mod node;
+mod osc52;
 mod outcome;
 pub mod outline;
 mod pane;
@@ -61,6 +62,7 @@ mod view;
 pub use context::Context;
 pub use input::InputEvent;
 pub use node::{node, Node};
+pub use osc52::write as osc52_write;
 pub use outcome::Outcome;
 pub use pane::Pane;
 pub use spacer::Spacer;

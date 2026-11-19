@@ -132,7 +132,7 @@ fn copy_selection(input: &mut Input) -> bool {
         .skip(start)
         .take(end - start)
         .collect();
-    osc52_write(&text);
+    let _ = terminalui_core::osc52_write(&text);
     input.clipboard = Some(text);
     true
 }
@@ -151,44 +151,6 @@ fn paste_internal(input: &mut Input) -> bool {
     };
     insert_str(input, &text);
     true
-}
-
-/// Send the clipboard to the terminal via OSC 52 so the system clipboard
-/// receives the copy/cut. Best effort: only when stdout is a terminal and
-/// on terminals that support it; the internal buffer always keeps a copy.
-fn osc52_write(text: &str) {
-    use std::io::{IsTerminal, Write};
-    let stdout = std::io::stdout();
-    if !stdout.is_terminal() {
-        return;
-    }
-    let mut out = stdout;
-    let _ = write!(out, "\x1b]52;c;{}\x07", base64(text.as_bytes()));
-    let _ = out.flush();
-}
-
-fn base64(bytes: &[u8]) -> String {
-    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let first = chunk[0] as u32;
-        let second = *chunk.get(1).unwrap_or(&0) as u32;
-        let third = *chunk.get(2).unwrap_or(&0) as u32;
-        let n = (first << 16) | (second << 8) | third;
-        out.push(ALPHABET[(n >> 18) as usize & 0x3F] as char);
-        out.push(ALPHABET[(n >> 12) as usize & 0x3F] as char);
-        out.push(if chunk.len() < 2 {
-            '='
-        } else {
-            ALPHABET[(n >> 6) as usize & 0x3F] as char
-        });
-        out.push(if chunk.len() < 3 {
-            '='
-        } else {
-            ALPHABET[n as usize & 0x3F] as char
-        });
-    }
-    out
 }
 
 fn apply_key(input: &mut Input, key: &KeyEvent) -> bool {
