@@ -59,6 +59,8 @@ pub(super) fn paint(
         fill_gradient: None,
     };
     let inner = draw_box(buf, area, &chrome, theme);
+    input.state.view_height = inner.height.max(1) as usize;
+    input.state.view_width = inner.width.max(1) as usize;
 
     let padding_x = 1u16;
     let text_y = inner.y + inner.height / 2;
@@ -185,39 +187,36 @@ fn paint_multiline(
     selected_style: Style,
 ) {
     let inner_height = inner.height as usize;
-    let lines: Vec<&str> = input.state.value.split('\n').collect();
-    let start = input.state.scroll.min(lines.len().saturating_sub(1));
+    let rows = super::wrap::visual_rows(&input.state.value, max_text);
+    let start = input.state.scroll.min(rows.len().saturating_sub(1));
     let selection = input.selection();
-    let mut char_index = input
-        .value_slice(0, input.line_start(start))
-        .chars()
-        .count();
-    for (index, line) in lines.iter().enumerate().skip(start) {
+
+    for (index, row) in rows.iter().enumerate().skip(start) {
         let y = inner.y + (index - start) as u16;
         if y >= inner.y + inner.height {
             break;
         }
-        for (visible, (char_offset, ch)) in line.chars().enumerate().take(max_text).enumerate() {
+        for (visible, ch) in row.text.chars().enumerate() {
             let x = inner.x + 1 + visible as u16;
-            let global = char_index + char_offset;
-            let selected = selection.is_some_and(|(start, end)| start <= global && global < end);
+            let global = row.global + visible;
+            let selected = selection.is_some_and(|(from, to)| from <= global && global < to);
             paint_cell(buf, x, y, ch, selected, text_color, selected_style);
         }
-        char_index += line.chars().count() + 1;
     }
-    let mut scroll = Scroll::new(inner_height, lines.len());
-    scroll.offset = input.state.scroll;
-    render_scrollbar(buf, inner, &input.style.scrollbar, theme, &scroll);
+    let mut scrollbar = Scroll::new(inner_height, rows.len());
+    scrollbar.offset = input.state.scroll;
+    render_scrollbar(buf, inner, &input.style.scrollbar, theme, &scrollbar);
 
     if !input.state.focused || input.state.disabled {
         return;
     }
-    let (line, col) = input.cursor_line_col();
-    if line >= start {
-        let y = inner.y + (line - start) as u16;
-        let cursor_x = (inner.x + 1 + col as u16).min(inner.x + inner.width.saturating_sub(1));
-        let global = input.value_slice(0, input.line_start(line)).chars().count() + col;
-        let cell_selected = selection.is_some_and(|(start_, end)| start_ <= global && global < end);
+    let (row_index, column) = super::wrap::visual_cursor(&rows, max_text, input.state.cursor);
+    if (start..start + inner_height).contains(&row_index) {
+        let y = inner.y + (row_index - start) as u16;
+        let cursor_x = (inner.x + 1 + u16::try_from(column).unwrap_or(u16::MAX))
+            .min(inner.x + inner.width.saturating_sub(1));
+        let global = rows[row_index].global + column;
+        let cell_selected = selection.is_some_and(|(from, to)| from <= global && global < to);
         draw_caret(
             input,
             buf,

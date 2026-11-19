@@ -20,18 +20,19 @@ use serde::Serialize;
 use std::any::Any;
 use std::time::Duration;
 
+pub use super::chrome::{Border, Radius};
 pub use super::cursor::{CursorMode, CursorShape, CursorStyle};
 use terminalui_core::input::InputEvent;
 use terminalui_core::outline::quoted;
 use terminalui_core::theme::Theme;
 use terminalui_core::{node, Context, Node, Outcome, Text, View};
-
-pub use super::chrome::{Border, Radius};
+use wrap::{visual_cursor, visual_rows};
 
 use super::scroll::ScrollbarStyle;
 
 mod edit;
 mod render;
+mod wrap;
 
 /// Public state of the input: area, text, cursor, focus and scroll.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -50,6 +51,10 @@ pub struct InputState {
     pub scroll: usize,
     /// Horizontal scroll in single-line mode when the text overflows.
     pub scroll_x: usize,
+    /// Visible text rows from the last render, set during render.
+    pub view_height: usize,
+    /// Visible text columns from the last render, set during render.
+    pub view_width: usize,
     /// Selection anchor (char index). The cursor is the moving edge;
     /// when anchor and cursor coincide there is no selection.
     pub anchor: Option<usize>,
@@ -144,6 +149,8 @@ impl Input {
                 disabled: false,
                 scroll: 0,
                 scroll_x: 0,
+                view_height: 1,
+                view_width: 1,
                 anchor: None,
             },
             style: InputStyle::default(),
@@ -268,10 +275,6 @@ impl Input {
             .unwrap_or(0)
     }
 
-    pub(crate) fn value_slice(&self, start: usize, len: usize) -> String {
-        self.state.value.chars().skip(start).take(len).collect()
-    }
-
     /// Caret visibility in `0..=1`: mode visibility (with blink phase) times
     /// the configured opacity.
     pub(crate) fn caret_visibility(&self) -> f64 {
@@ -308,14 +311,16 @@ impl Input {
     }
 
     fn clamp_view(&mut self) {
-        let (line, _) = self.cursor_line_col();
-        if line < self.state.scroll {
-            self.state.scroll = line;
+        let width = self.state.view_width.max(1);
+        let rows = visual_rows(&self.state.value, width);
+        let (row, _) = visual_cursor(&rows, width, self.state.cursor);
+        if row < self.state.scroll {
+            self.state.scroll = row;
             return;
         }
-        let height = self.state.area.height as usize;
-        if height > 0 && line >= self.state.scroll + height {
-            self.state.scroll = line + 1 - height;
+        let height = self.state.view_height.max(1);
+        if row >= self.state.scroll + height {
+            self.state.scroll = row + 1 - height;
         }
     }
 }
