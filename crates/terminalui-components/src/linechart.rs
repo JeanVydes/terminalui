@@ -13,11 +13,14 @@ use terminalui_core::outline::quoted;
 use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
 
+use super::axis::{format_value, nice_max, ticks};
 use super::layout::{row, Align};
 use super::presentation::{RenderStyle, StyleTuning};
 
 const MAX_HISTORY: usize = 240;
 const AXIS_WIDTH: u16 = 8;
+/// Ticks on a zero-based value axis.
+const AXIS_DIVISIONS: usize = 10;
 
 /// Public state of the chart: the last rendered area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -142,20 +145,12 @@ impl LineChart {
         if let Some(domain) = self.domain {
             return domain;
         }
-        let mut low = f64::INFINITY;
-        let mut high = f64::NEG_INFINITY;
-        for value in &self.series {
-            low = low.min(*value);
-            high = high.max(*value);
-        }
-        if !low.is_finite() || !high.is_finite() {
-            return (0.0, 1.0);
-        }
-        if (high - low).abs() < f64::EPSILON {
-            return (low - 1.0, high + 1.0);
-        }
-        let padding = (high - low) * 0.04;
-        (low - padding, high + padding)
+        let high = self
+            .series
+            .iter()
+            .copied()
+            .fold(0.0f64, |peak, value| peak.max(value));
+        (0.0, nice_max(high, AXIS_DIVISIONS))
     }
 }
 
@@ -229,20 +224,24 @@ impl View for LineChart {
             plot_top + ((1.0 - normalized) * (plot_height - 1.0)).round() as u16
         };
 
-        // Dotted gridlines with min/mid/max labels.
-        for step in 0..=4 {
-            let value = low + (step as f64 / 4.0) * range;
+        // Dotted gridlines from zero to the rounded maximum. Labels that would
+        // land on a row already used are skipped so short plots stay readable.
+        let mut labeled_rows = Vec::new();
+        for value in ticks(high, AXIS_DIVISIONS) {
             let y = to_y(value).clamp(plot_top, plot_bottom);
             for x in (area.x..area.x + plot_width).step_by(3) {
                 buf.set_string(x, y, "·", Style::default().fg(grid_color));
             }
-            buf.set_stringn(
-                axis_x + 2,
-                y,
-                format!("{value:.2}"),
-                8,
-                Style::default().fg(label_color),
-            );
+            if !labeled_rows.contains(&y) {
+                labeled_rows.push(y);
+                buf.set_stringn(
+                    axis_x + 2,
+                    y,
+                    format_value(value),
+                    usize::from(AXIS_WIDTH.saturating_sub(2)),
+                    Style::default().fg(label_color),
+                );
+            }
         }
         for y in plot_top..=plot_bottom {
             buf.set_string(axis_x, y, "│", Style::default().fg(grid_color));
@@ -275,7 +274,7 @@ impl View for LineChart {
         // Latest value tag on the right axis.
         let latest = *self.series.last().unwrap_or(&low);
         let y = to_y(latest).clamp(plot_top, plot_bottom);
-        let tag = format!(" {latest:.2} ");
+        let tag = format!(" {} ", format_value(latest));
         buf.set_stringn(
             axis_x + 2,
             y,

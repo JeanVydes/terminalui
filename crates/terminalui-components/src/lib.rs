@@ -41,6 +41,7 @@ pub mod cursor;
 mod layout;
 
 pub mod autocomplete;
+pub mod axis;
 pub mod badge;
 pub mod barchart;
 pub mod boxplot;

@@ -10,6 +10,7 @@ use terminalui_core::outline::quoted;
 use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
 
+use super::axis::{format_value, nice_max};
 use super::layout::{row, Align};
 use super::presentation::{Presentation, RenderStyle, StyleTuning};
 use super::scroll::{render_scrollbar, Scroll, ScrollbarStyle, ScrollbarVisibility};
@@ -25,6 +26,8 @@ const NATIVE: Presentation = Presentation {
 };
 
 const MAX_HISTORY: usize = 240;
+/// Ticks on a zero-based value axis.
+const AXIS_DIVISIONS: usize = 10;
 
 /// Width the caption row actually occupies, so the OHLC stats sit next to it.
 /// Min and max of `volume` in the visible slice; the ink ramp for candle
@@ -337,19 +340,16 @@ impl View for CandleChart {
         let start = end.saturating_sub(visible_count);
         let series_index = |visible: usize| -> usize { start + visible };
 
-        // Vertical range of the visible window.
-        let mut low = f64::INFINITY;
-        let mut high = f64::NEG_INFINITY;
-        for candle in &self.series[start..end] {
-            low = low.min(candle.low);
-            high = high.max(candle.high);
-        }
-        low -= 1.0;
-        high += 1.0;
-        let range = ((high - low) * self.state.y_zoom).max(0.001);
-        let mid = (high + low) / 2.0;
-        let half = range / 2.0;
-        let low = mid - half;
+        // Zero-based vertical range ending at a rounded bound above the
+        // visible peak, so the axis reads in round steps instead of tracking
+        // the data's own minimum and maximum.
+        let peak = self.series[start..end]
+            .iter()
+            .map(|candle| candle.high.max(candle.close).max(candle.open))
+            .fold(0.0f64, |peak, value| peak.max(value));
+        let high = nice_max(peak, AXIS_DIVISIONS);
+        let low = 0.0f64;
+        let range = (high * self.state.y_zoom).max(0.001);
 
         let caption_offset = if self.children.is_empty() { 0 } else { 1 };
         let plot_top = area.y + caption_offset + 1;
@@ -382,8 +382,11 @@ impl View for CandleChart {
         let stats_x = area.x + caption_width(&self.children);
         let stats_y = area.y;
         let header = format!(
-            "O {:.2} H {:.2} L {:.2} C {:.2} {change:+.2}%",
-            last.open, last.high, last.low, reference_close,
+            "O {} H {} L {} C {} {change:+.2}%",
+            format_value(last.open),
+            format_value(last.high),
+            format_value(last.low),
+            format_value(reference_close),
         );
         if caption_height > 0 && area.width >= 44 {
             buf.set_stringn(
@@ -403,20 +406,24 @@ impl View for CandleChart {
             );
         }
 
-        // Gridlines and price labels.
-        for step in 0..=4 {
-            let value = low + (step as f64 / 4.0) * range;
+        // Gridlines and price labels, from zero to the rounded maximum.
+        let mut labeled_rows = Vec::new();
+        for step in 0..=AXIS_DIVISIONS {
+            let value = low + (step as f64 / AXIS_DIVISIONS as f64) * range;
             let y = to_y(value).clamp(plot_top, plot_bottom);
             for x in (area.x..area.x + plot_width).step_by(3) {
                 buf.set_string(x, y, pres.grid, Style::default().fg(grid_color));
             }
-            buf.set_stringn(
-                axis_x + 2,
-                y,
-                format!("{value:.2}"),
-                8,
-                Style::default().fg(label_color),
-            );
+            if !labeled_rows.contains(&y) {
+                labeled_rows.push(y);
+                buf.set_stringn(
+                    axis_x + 2,
+                    y,
+                    format_value(value),
+                    8,
+                    Style::default().fg(label_color),
+                );
+            }
         }
 
         // Axes.
@@ -535,7 +542,7 @@ impl View for CandleChart {
             for x in (area.x..area.x + plot_width).step_by(3) {
                 buf.set_string(x, live_y, pres.live, Style::default().fg(live_color));
             }
-            let tag = format!(" {live_price:.2} ");
+            let tag = format!(" {} ", format_value(live_price));
             buf.set_stringn(
                 axis_x + 2,
                 live_y,
