@@ -406,8 +406,8 @@ impl View for CandleChart {
             );
         }
 
-        // Gridlines follow the ten divisions; labels use those same rounded
-        // values but are spread over the rows the plot actually has.
+        // Gridlines follow the ten divisions; ten fixed labels show the same
+        // rounded values, highest on top and zero as the bottom baseline.
         let axis: Vec<f64> = (0..=AXIS_DIVISIONS)
             .map(|step| low + (step as f64 / AXIS_DIVISIONS as f64) * range)
             .collect();
@@ -417,21 +417,15 @@ impl View for CandleChart {
                 buf.set_string(x, y, pres.grid, Style::default().fg(grid_color));
             }
         }
-        let rows = usize::from(plot_bottom.saturating_sub(plot_top)) + 1;
-        let labels = rows.min(axis.len());
-        for row in 0..labels {
-            let fraction = if labels == 1 {
-                0.0
-            } else {
-                row as f64 / (labels - 1) as f64
-            };
-            let index = (fraction * AXIS_DIVISIONS as f64).round() as usize;
-            let y = plot_top
-                + (fraction * f64::from(plot_bottom.saturating_sub(plot_top))).round() as u16;
+        let span = plot_bottom.saturating_sub(plot_top);
+        for index in 0..=AXIS_DIVISIONS {
+            let value = axis[AXIS_DIVISIONS - index];
+            let y = plot_top + (index as u16 * span / AXIS_DIVISIONS as u16);
+            let column = axis_x + 2 + (index % 2) as u16 * 4;
             buf.set_stringn(
-                axis_x + 2,
+                column,
                 y,
-                format_value(axis[index.min(AXIS_DIVISIONS)]),
+                format_value(value),
                 8,
                 Style::default().fg(label_color),
             );

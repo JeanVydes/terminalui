@@ -224,9 +224,7 @@ impl View for LineChart {
             plot_top + ((1.0 - normalized) * (plot_height - 1.0)).round() as u16
         };
 
-        // Gridlines follow the ten divisions of the rounded axis. Labels are
-        // spread over the rows the plot actually has, always picking a value
-        // from that scale so a short chart reads 0, 250k, 500k, ... 1m.
+        // Gridlines follow the ten divisions of the rounded axis.
         let axis = ticks(high, AXIS_DIVISIONS);
         for value in &axis {
             let y = to_y(*value).clamp(plot_top, plot_bottom);
@@ -234,22 +232,18 @@ impl View for LineChart {
                 buf.set_string(x, y, "·", Style::default().fg(grid_color));
             }
         }
-        let rows = usize::from(plot_bottom.saturating_sub(plot_top)) + 1;
-        let labels = rows.min(axis.len());
-        for row in 0..labels {
-            let fraction = if labels == 1 {
-                0.0
-            } else {
-                row as f64 / (labels - 1) as f64
-            };
-            let index = (fraction * AXIS_DIVISIONS as f64).round() as usize;
-            let y = plot_top
-                + (fraction * f64::from(plot_bottom.saturating_sub(plot_top))).round() as u16;
+        // Ten fixed labels: the highest value on top, zero as the baseline at
+        // the bottom. Two narrow columns fit them even on short plots.
+        let span = plot_bottom.saturating_sub(plot_top);
+        for index in 0..=AXIS_DIVISIONS {
+            let value = axis[AXIS_DIVISIONS - index];
+            let y = plot_top + (index as u16 * span / AXIS_DIVISIONS as u16);
+            let column = axis_x + 2 + (index % 2) as u16 * 4;
             buf.set_stringn(
-                axis_x + 2,
+                column,
                 y,
-                format_value(axis[index.min(AXIS_DIVISIONS)]),
-                usize::from(AXIS_WIDTH.saturating_sub(2)),
+                format_value(value),
+                4,
                 Style::default().fg(label_color),
             );
         }
