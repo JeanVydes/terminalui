@@ -18,7 +18,7 @@ use super::layout::{row, Align};
 use super::presentation::{RenderStyle, StyleTuning};
 
 const MAX_HISTORY: usize = 240;
-const AXIS_WIDTH: u16 = 11;
+const AXIS_WIDTH: u16 = 8;
 /// Ticks on a zero-based value axis.
 const AXIS_DIVISIONS: usize = 10;
 
@@ -232,15 +232,14 @@ impl View for LineChart {
                 buf.set_string(x, y, "·", Style::default().fg(grid_color));
             }
         }
-        // Ten fixed labels: the highest value on top, zero as the baseline at
-        // the bottom. Two narrow columns fit them even on short plots.
+        // Ten fixed labels in one column: the highest value on top, zero as
+        // the baseline at the bottom.
         let span = plot_bottom.saturating_sub(plot_top);
         for index in 0..=AXIS_DIVISIONS {
             let value = axis[AXIS_DIVISIONS - index];
             let y = plot_top + (index as u16 * span / AXIS_DIVISIONS as u16);
-            let column = axis_x + 2 + (index % 2) as u16 * 5;
             buf.set_stringn(
-                column,
+                axis_x + 2,
                 y,
                 format_value(value),
                 4,
