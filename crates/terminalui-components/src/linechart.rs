@@ -224,24 +224,34 @@ impl View for LineChart {
             plot_top + ((1.0 - normalized) * (plot_height - 1.0)).round() as u16
         };
 
-        // Dotted gridlines from zero to the rounded maximum. Labels that would
-        // land on a row already used are skipped so short plots stay readable.
-        let mut labeled_rows = Vec::new();
-        for value in ticks(high, AXIS_DIVISIONS) {
-            let y = to_y(value).clamp(plot_top, plot_bottom);
+        // Gridlines follow the ten divisions of the rounded axis. Labels are
+        // spread over the rows the plot actually has, always picking a value
+        // from that scale so a short chart reads 0, 250k, 500k, ... 1m.
+        let axis = ticks(high, AXIS_DIVISIONS);
+        for value in &axis {
+            let y = to_y(*value).clamp(plot_top, plot_bottom);
             for x in (area.x..area.x + plot_width).step_by(3) {
                 buf.set_string(x, y, "·", Style::default().fg(grid_color));
             }
-            if !labeled_rows.contains(&y) {
-                labeled_rows.push(y);
-                buf.set_stringn(
-                    axis_x + 2,
-                    y,
-                    format_value(value),
-                    usize::from(AXIS_WIDTH.saturating_sub(2)),
-                    Style::default().fg(label_color),
-                );
-            }
+        }
+        let rows = usize::from(plot_bottom.saturating_sub(plot_top)) + 1;
+        let labels = rows.min(axis.len());
+        for row in 0..labels {
+            let fraction = if labels == 1 {
+                0.0
+            } else {
+                row as f64 / (labels - 1) as f64
+            };
+            let index = (fraction * AXIS_DIVISIONS as f64).round() as usize;
+            let y = plot_top
+                + (fraction * f64::from(plot_bottom.saturating_sub(plot_top))).round() as u16;
+            buf.set_stringn(
+                axis_x + 2,
+                y,
+                format_value(axis[index.min(AXIS_DIVISIONS)]),
+                usize::from(AXIS_WIDTH.saturating_sub(2)),
+                Style::default().fg(label_color),
+            );
         }
         for y in plot_top..=plot_bottom {
             buf.set_string(axis_x, y, "│", Style::default().fg(grid_color));

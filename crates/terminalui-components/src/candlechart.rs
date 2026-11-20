@@ -406,24 +406,35 @@ impl View for CandleChart {
             );
         }
 
-        // Gridlines and price labels, from zero to the rounded maximum.
-        let mut labeled_rows = Vec::new();
-        for step in 0..=AXIS_DIVISIONS {
-            let value = low + (step as f64 / AXIS_DIVISIONS as f64) * range;
-            let y = to_y(value).clamp(plot_top, plot_bottom);
+        // Gridlines follow the ten divisions; labels use those same rounded
+        // values but are spread over the rows the plot actually has.
+        let axis: Vec<f64> = (0..=AXIS_DIVISIONS)
+            .map(|step| low + (step as f64 / AXIS_DIVISIONS as f64) * range)
+            .collect();
+        for value in &axis {
+            let y = to_y(*value).clamp(plot_top, plot_bottom);
             for x in (area.x..area.x + plot_width).step_by(3) {
                 buf.set_string(x, y, pres.grid, Style::default().fg(grid_color));
             }
-            if !labeled_rows.contains(&y) {
-                labeled_rows.push(y);
-                buf.set_stringn(
-                    axis_x + 2,
-                    y,
-                    format_value(value),
-                    8,
-                    Style::default().fg(label_color),
-                );
-            }
+        }
+        let rows = usize::from(plot_bottom.saturating_sub(plot_top)) + 1;
+        let labels = rows.min(axis.len());
+        for row in 0..labels {
+            let fraction = if labels == 1 {
+                0.0
+            } else {
+                row as f64 / (labels - 1) as f64
+            };
+            let index = (fraction * AXIS_DIVISIONS as f64).round() as usize;
+            let y = plot_top
+                + (fraction * f64::from(plot_bottom.saturating_sub(plot_top))).round() as u16;
+            buf.set_stringn(
+                axis_x + 2,
+                y,
+                format_value(axis[index.min(AXIS_DIVISIONS)]),
+                8,
+                Style::default().fg(label_color),
+            );
         }
 
         // Axes.
