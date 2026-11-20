@@ -18,7 +18,7 @@ use super::layout::{row, Align};
 use super::presentation::{RenderStyle, StyleTuning};
 
 const MAX_HISTORY: usize = 240;
-const AXIS_WIDTH: u16 = 8;
+const AXIS_WIDTH: u16 = 11;
 /// Ticks on a zero-based value axis.
 const AXIS_DIVISIONS: usize = 10;
 
@@ -238,7 +238,7 @@ impl View for LineChart {
         for index in 0..=AXIS_DIVISIONS {
             let value = axis[AXIS_DIVISIONS - index];
             let y = plot_top + (index as u16 * span / AXIS_DIVISIONS as u16);
-            let column = axis_x + 2 + (index % 2) as u16 * 4;
+            let column = axis_x + 2 + (index % 2) as u16 * 5;
             buf.set_stringn(
                 column,
                 y,

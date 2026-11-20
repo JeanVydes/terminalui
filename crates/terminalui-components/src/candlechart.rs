@@ -421,7 +421,7 @@ impl View for CandleChart {
         for index in 0..=AXIS_DIVISIONS {
             let value = axis[AXIS_DIVISIONS - index];
             let y = plot_top + (index as u16 * span / AXIS_DIVISIONS as u16);
-            let column = axis_x + 2 + (index % 2) as u16 * 4;
+            let column = axis_x + 2 + (index % 2) as u16 * 5;
             buf.set_stringn(
                 column,
                 y,
