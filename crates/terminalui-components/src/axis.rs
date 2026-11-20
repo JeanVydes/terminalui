@@ -26,6 +26,9 @@ pub fn nice_max(max: f64, divisions: usize) -> f64 {
 /// A short, human-readable axis label: `1m`, `250k`, `12`, `0.5`.
 pub fn format_value(value: f64) -> String {
     let magnitude = value.abs();
+    if magnitude == 0.0 {
+        return "0".to_owned();
+    }
     if magnitude >= 1_000_000.0 {
         compact(value / 1_000_000.0, "m")
     } else if magnitude >= 1_000.0 {
@@ -81,5 +84,6 @@ mod tests {
         assert_eq!(format_value(1_000_000.0), "1m");
         assert_eq!(format_value(250_000.0), "250k");
         assert_eq!(format_value(12.0), "12");
+        assert_eq!(format_value(0.0), "0");
     }
 }
