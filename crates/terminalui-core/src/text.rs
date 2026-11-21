@@ -74,6 +74,14 @@ impl Text {
         self
     }
 
+    /// Replaces the style in place.
+    ///
+    /// Use this when a theme change must keep the same view instance, so
+    /// focus, identity and hit-test state attached to the node survive.
+    pub fn set_style(&mut self, style: TextStyle) {
+        self.style = style;
+    }
+
     /// Replaces the content; use this rather than reaching into the leaf.
     pub fn set_text(&mut self, text: impl Into<String>) {
         self.content = text.into();
@@ -143,3 +151,7 @@ impl View for Text {
         Some((width, lines.max(1)))
     }
 }
+
+#[cfg(test)]
+#[path = "text_tests.rs"]
+mod tests;
