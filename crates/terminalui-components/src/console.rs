@@ -6,9 +6,10 @@
 //! spinner; when it exits the header reports the exit code.
 //!
 //! Output beyond `max_visible` rows scrolls; the view clamps its offset and
-//! draws a scrollbar when the output overflows.
+//! draws a scrollbar when the output overflows. The header shows the live line
+//! count and toggles between the collapsed window and every retained line.
 
-use crossterm::event::{KeyCode, KeyEventKind, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
@@ -25,6 +26,17 @@ use super::scroll::{render_scrollbar, Scroll, ScrollbarStyle};
 
 const DEFAULT_MAX_VISIBLE: usize = 8;
 const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+struct HeaderSlots {
+    status_x: u16,
+    status_text: String,
+    status_color: Color,
+    count_x: u16,
+    count_text: String,
+    marker_x: u16,
+    marker_text: &'static str,
+    show_details: bool,
+}
 
 /// Status of a console block.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
@@ -89,6 +101,7 @@ pub struct Console {
     pub style: ConsoleStyle,
     lines: Vec<String>,
     max_visible: usize,
+    expanded: bool,
 }
 
 impl Console {
@@ -101,6 +114,7 @@ impl Console {
             style: ConsoleStyle::default(),
             lines: Vec::new(),
             max_visible: DEFAULT_MAX_VISIBLE,
+            expanded: false,
         }
     }
 
@@ -109,6 +123,24 @@ impl Console {
         self.max_visible = rows.max(1);
         self.state.offset = self.clamp_offset(self.state.offset);
         self
+    }
+
+    /// Choose whether every retained line is shown instead of a window.
+    pub fn with_expanded(mut self, expanded: bool) -> Self {
+        self.expanded = expanded;
+        self.state.offset = self.clamp_offset(self.state.offset);
+        self
+    }
+
+    /// Whether every retained line is shown.
+    pub fn is_expanded(&self) -> bool {
+        self.expanded
+    }
+
+    /// Flip between the collapsed window and the full output.
+    pub fn toggle_expanded(&mut self) {
+        self.expanded = !self.expanded;
+        self.state.offset = self.clamp_offset(self.state.offset);
     }
 
     /// Replace the output lines entirely; scroll resets to the tail.
@@ -146,7 +178,11 @@ impl Console {
     }
 
     fn visible(&self) -> usize {
-        self.lines.len().min(self.max_visible)
+        if self.expanded {
+            self.lines.len()
+        } else {
+            self.lines.len().min(self.max_visible)
+        }
     }
 
     fn max_offset(&self) -> usize {
@@ -160,6 +196,200 @@ impl Console {
     fn scroll_rows(&mut self, delta: isize) {
         let next = self.state.offset as isize + delta;
         self.state.offset = next.clamp(0, self.max_offset() as isize) as usize;
+    }
+
+    fn status_label(&self, theme: &Theme) -> (String, Color) {
+        match self.status {
+            ConsoleStatus::Running => (
+                SPINNER_FRAMES[self.state.frame % SPINNER_FRAMES.len()].to_string(),
+                theme.accent,
+            ),
+            ConsoleStatus::Exited { code } => (
+                match code {
+                    Some(0) | None => "done".to_string(),
+                    Some(code) => format!("exit {code}"),
+                },
+                match code {
+                    Some(0) | None => theme.success,
+                    Some(_) => theme.destructive,
+                },
+            ),
+        }
+    }
+
+    fn header_slots(&self, inner: Rect, theme: &Theme) -> HeaderSlots {
+        let (status_text, status_color) = self.status_label(theme);
+        let count_text = format!("{} lines", self.lines.len());
+        let marker_text = if self.expanded { "[-]" } else { "[+]" };
+        let gap = 1u16;
+        let status_width = u16::try_from(status_text.chars().count()).unwrap_or(u16::MAX);
+        let count_width = u16::try_from(count_text.chars().count()).unwrap_or(u16::MAX);
+        let details_width = status_width
+            .saturating_add(gap)
+            .saturating_add(count_width)
+            .saturating_add(gap)
+            .saturating_add(3);
+        let show_details = inner.width >= details_width.saturating_add(3);
+        let status_x = if show_details {
+            inner.x + inner.width.saturating_sub(details_width)
+        } else {
+            inner.x + inner.width.saturating_sub(status_width)
+        };
+        HeaderSlots {
+            status_x,
+            status_text,
+            status_color,
+            count_x: status_x + status_width + gap,
+            count_text,
+            marker_x: status_x + status_width + gap + count_width + gap,
+            marker_text,
+            show_details,
+        }
+    }
+
+    fn paint_slot(
+        buf: &mut Buffer,
+        x: u16,
+        y: u16,
+        text: &str,
+        color: Color,
+        background: Color,
+        bold: bool,
+    ) {
+        let mut style = Style::default().fg(color).bg(background);
+        if bold {
+            style = style.add_modifier(Modifier::BOLD);
+        }
+        buf.set_stringn(x, y, text, text.len(), style);
+    }
+
+    fn paint_header(&self, inner: Rect, buf: &mut Buffer, theme: &Theme, background: Color) {
+        let slots = self.header_slots(inner, theme);
+        buf.set_style(Rect { height: 1, ..inner }, Style::default().bg(background));
+        Self::paint_slot(buf, inner.x, inner.y, "$ ", theme.accent, background, true);
+        self.paint_command(inner, buf, theme, background, &slots);
+        Self::paint_slot(
+            buf,
+            slots.status_x,
+            inner.y,
+            &slots.status_text,
+            slots.status_color,
+            background,
+            true,
+        );
+        if !slots.show_details {
+            return;
+        }
+        Self::paint_slot(
+            buf,
+            slots.count_x,
+            inner.y,
+            &slots.count_text,
+            theme.muted,
+            background,
+            false,
+        );
+        Self::paint_slot(
+            buf,
+            slots.marker_x,
+            inner.y,
+            slots.marker_text,
+            theme.accent,
+            background,
+            false,
+        );
+    }
+
+    fn paint_command(
+        &self,
+        inner: Rect,
+        buf: &mut Buffer,
+        theme: &Theme,
+        background: Color,
+        slots: &HeaderSlots,
+    ) {
+        let command_width = slots.status_x.saturating_sub(inner.x + 2).saturating_sub(1);
+        let command_text: String = self
+            .command
+            .chars()
+            .take(usize::from(command_width))
+            .collect();
+        Self::paint_slot(
+            buf,
+            inner.x + 2,
+            inner.y,
+            &command_text,
+            self.style.command.unwrap_or(theme.foreground),
+            background,
+            true,
+        );
+    }
+
+    fn paint_output(&self, area: Rect, buf: &mut Buffer, theme: &Theme) {
+        let output = self.style.output.unwrap_or(theme.muted);
+        Self::paint_output_background(area, buf, theme.secondary);
+        if self.lines.is_empty() {
+            Self::paint_placeholder(area, buf, output, theme.secondary);
+            return;
+        }
+        self.paint_lines(area, buf, output, theme.secondary);
+        self.paint_scrollbar(area, buf, theme);
+    }
+
+    fn paint_output_background(area: Rect, buf: &mut Buffer, background: Color) {
+        for y in area.y..area.y + area.height {
+            buf.set_stringn(
+                area.x,
+                y,
+                " ".repeat(area.width as usize),
+                area.width as usize,
+                Style::default().bg(background),
+            );
+        }
+    }
+
+    fn paint_placeholder(area: Rect, buf: &mut Buffer, output: Color, background: Color) {
+        buf.set_stringn(
+            area.x,
+            area.y,
+            "waiting for output...",
+            area.width as usize,
+            Style::default()
+                .fg(output)
+                .bg(background)
+                .add_modifier(Modifier::ITALIC),
+        );
+    }
+
+    fn paint_lines(&self, area: Rect, buf: &mut Buffer, output: Color, background: Color) {
+        let visible = self.visible().min(usize::from(area.height));
+        let start = self
+            .lines
+            .len()
+            .saturating_sub(self.state.offset + self.visible());
+        for (row, index) in (start..start + visible).enumerate() {
+            let line = &self.lines[index];
+            let truncated: String = line.chars().take(area.width as usize).collect();
+            buf.set_stringn(
+                area.x,
+                area.y + row as u16,
+                &truncated,
+                truncated.len(),
+                Style::default().fg(output).bg(background),
+            );
+        }
+    }
+
+    fn paint_scrollbar(&self, area: Rect, buf: &mut Buffer, theme: &Theme) {
+        if self.expanded || self.lines.len() <= self.max_visible {
+            return;
+        }
+        let scroll = Scroll {
+            offset: self.max_offset().saturating_sub(self.state.offset),
+            viewport: self.max_visible,
+            total: self.lines.len(),
+        };
+        render_scrollbar(buf, area, &ScrollbarStyle::default(), theme, &scroll);
     }
 }
 
@@ -225,120 +455,18 @@ impl View for Console {
             return;
         }
 
-        let command = theme.foreground;
-        let accent = theme.accent;
-        let output = self.style.output.unwrap_or(theme.muted);
-        let command_color = self.style.command.unwrap_or(command);
-
-        let header_style = Style::default().bg(chrome.background.unwrap_or(theme.secondary));
-        buf.set_style(Rect { height: 1, ..inner }, header_style);
-        buf.set_stringn(
-            inner.x,
-            inner.y,
-            "$ ",
-            2,
-            Style::default()
-                .fg(accent)
-                .bg(theme.secondary)
-                .add_modifier(Modifier::BOLD),
+        self.paint_header(
+            inner,
+            buf,
+            theme,
+            chrome.background.unwrap_or(theme.secondary),
         );
-        let command_text: String = self
-            .command
-            .chars()
-            .take(inner.width.saturating_sub(6) as usize)
-            .collect();
-        buf.set_stringn(
-            inner.x + 2,
-            inner.y,
-            &command_text,
-            command_text.len(),
-            Style::default()
-                .fg(command_color)
-                .bg(theme.secondary)
-                .add_modifier(Modifier::BOLD),
-        );
-
-        let status_text = match self.status {
-            ConsoleStatus::Running => {
-                SPINNER_FRAMES[self.state.frame % SPINNER_FRAMES.len()].to_string()
-            }
-            ConsoleStatus::Exited { code } => match code {
-                Some(0) => "done".to_string(),
-                Some(code) => format!("exit {code}"),
-                None => "done".to_string(),
-            },
-        };
-        let status_color = match self.status {
-            ConsoleStatus::Running => accent,
-            ConsoleStatus::Exited { code } => match code {
-                Some(0) | None => theme.success,
-                Some(_) => theme.destructive,
-            },
-        };
-        let status_width = status_text.chars().count() as u16;
-        let status_x = inner.x + inner.width.saturating_sub(status_width);
-        buf.set_stringn(
-            status_x,
-            inner.y,
-            &status_text,
-            status_width as usize,
-            Style::default()
-                .fg(status_color)
-                .bg(theme.secondary)
-                .add_modifier(Modifier::BOLD),
-        );
-
         let output_area = Rect {
             y: inner.y + 1,
             height: inner.height - 1,
             ..inner
         };
-        for y in output_area.y..output_area.y + output_area.height {
-            buf.set_stringn(
-                output_area.x,
-                y,
-                " ".repeat(output_area.width as usize),
-                output_area.width as usize,
-                Style::default().bg(theme.secondary),
-            );
-        }
-        if self.lines.is_empty() {
-            buf.set_stringn(
-                output_area.x,
-                output_area.y,
-                "waiting for output...",
-                output_area.width as usize,
-                Style::default()
-                    .fg(output)
-                    .bg(theme.secondary)
-                    .add_modifier(Modifier::ITALIC),
-            );
-            return;
-        }
-
-        let len = self.lines.len();
-        let start = len.saturating_sub(self.state.offset + self.visible());
-        let end = start + self.visible();
-        for (row, index) in (start..end).enumerate() {
-            let line = &self.lines[index];
-            let truncated: String = line.chars().take(output_area.width as usize).collect();
-            buf.set_stringn(
-                output_area.x,
-                output_area.y + row as u16,
-                &truncated,
-                truncated.len(),
-                Style::default().fg(output).bg(theme.secondary),
-            );
-        }
-
-        if self.lines.len() > self.max_visible {
-            let scroll = Scroll {
-                offset: self.max_offset().saturating_sub(self.state.offset),
-                viewport: self.max_visible,
-                total: self.lines.len(),
-            };
-            render_scrollbar(buf, output_area, &ScrollbarStyle::default(), theme, &scroll);
-        }
+        self.paint_output(output_area, buf, theme);
     }
 
     fn tick(&mut self, delta: std::time::Duration, _cx: &mut Context) {
@@ -352,6 +480,15 @@ impl View for Console {
     fn handle_event(&mut self, event: &InputEvent, _cx: &mut Context) -> Outcome {
         let InputEvent::Key(key) = event else {
             if let InputEvent::Mouse(mouse) = event {
+                let header_click = mouse.kind == MouseEventKind::Down(MouseButton::Left)
+                    && self.state.area.width > 0
+                    && mouse.row == self.state.area.y
+                    && mouse.column >= self.state.area.x
+                    && mouse.column < self.state.area.x + self.state.area.width;
+                if header_click {
+                    self.toggle_expanded();
+                    return Outcome::Consumed;
+                }
                 if mouse.kind == MouseEventKind::ScrollUp {
                     self.scroll_rows(-3);
                     return Outcome::Consumed;
@@ -367,6 +504,10 @@ impl View for Console {
             return Outcome::Ignored;
         }
         match key.code {
+            KeyCode::Enter => {
+                self.toggle_expanded();
+                Outcome::Consumed
+            }
             KeyCode::Up => {
                 self.scroll_rows(-1);
                 Outcome::Consumed

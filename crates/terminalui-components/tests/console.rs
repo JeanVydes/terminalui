@@ -1,11 +1,13 @@
 //! Tests for the console shell log.
 
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
 use terminalui_components::console::{Console, ConsoleStatus};
+use terminalui_core::input::InputEvent;
 use terminalui_core::theme::Theme;
-use terminalui_core::{node, Stack, Tree, View};
+use terminalui_core::{node, Outcome, Stack, Tree, View};
 
 fn single(child: terminalui_core::Node) -> Tree {
     Tree::new(node("root", Stack::vertical().children(vec![child])))
@@ -86,4 +88,85 @@ fn console_outline_reports_running_state() {
         console.outline().as_deref(),
         Some("command='cargo build' status=running rows=2")
     );
+}
+
+#[test]
+fn expanded_console_measures_every_retained_line() {
+    let lines: Vec<String> = (0..5).map(|n| format!("row {n}")).collect();
+    let console = Console::new("yes")
+        .with_max_visible(2)
+        .set_lines(lines)
+        .with_expanded(true);
+    assert!(console.is_expanded());
+    assert_eq!(console.measure(), Some((0, 6)));
+    assert_eq!(console.state.offset, 0);
+}
+
+#[test]
+fn expanded_console_renders_every_line_and_the_live_count() {
+    let lines: Vec<String> = (0..12).map(|n| format!("row {n}")).collect();
+    let console = Console::new("yes")
+        .with_max_visible(4)
+        .set_lines(lines)
+        .with_expanded(true);
+    let mut tree = single(node("shell", console));
+    let out = paint(&mut tree, Rect::new(0, 0, 40, 13));
+    assert!(out.contains("row 0"), "got: {out}");
+    assert!(out.contains("row 11"), "got: {out}");
+    assert!(out.contains("12 lines"), "got: {out}");
+    assert!(out.contains("[-]"), "got: {out}");
+}
+
+#[test]
+fn the_header_line_count_follows_new_output() {
+    let mut tree = single(node("shell", Console::new("cargo test")));
+    let area = Rect::new(0, 0, 40, 3);
+
+    tree.find_mut::<Console>("shell")
+        .expect("console")
+        .push_line("one");
+    let text = paint(&mut tree, area);
+    assert!(text.contains("1 lines"), "got: {text}");
+
+    tree.find_mut::<Console>("shell")
+        .expect("console")
+        .push_line("two");
+    let text = paint(&mut tree, area);
+    assert!(text.contains("2 lines"), "got: {text}");
+    assert!(text.contains("[+]"), "got: {text}");
+}
+
+#[test]
+fn clicking_the_header_toggles_expansion() {
+    let mut tree = single(node("shell", Console::new("yes")));
+    let mut buffer = Buffer::empty(Rect::new(0, 0, 40, 3));
+    tree.render(Rect::new(0, 0, 40, 3), &mut buffer, &Theme::default());
+    let click = InputEvent::Mouse(MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: 2,
+        row: 0,
+        modifiers: KeyModifiers::NONE,
+    });
+    assert_eq!(tree.handle_event(&click), Outcome::Consumed);
+    assert!(tree
+        .find::<Console>("shell")
+        .expect("console")
+        .is_expanded());
+
+    assert_eq!(tree.handle_event(&click), Outcome::Consumed);
+    assert!(!tree
+        .find::<Console>("shell")
+        .expect("console")
+        .is_expanded());
+}
+
+#[test]
+fn enter_toggles_expansion() {
+    let mut tree = single(node("shell", Console::new("yes")));
+    let enter = InputEvent::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(tree.handle_event(&enter), Outcome::Consumed);
+    assert!(tree
+        .find::<Console>("shell")
+        .expect("console")
+        .is_expanded());
 }
