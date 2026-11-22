@@ -82,6 +82,25 @@ fn console_scrolls_output_with_overflow() {
 }
 
 #[test]
+fn long_output_wraps_to_the_rendered_width() {
+    let line = "abcdefghijklmnopqrstuvwxyz";
+    let console = Console::new("yes").set_lines(vec![line.to_string()]);
+    let mut tree = Tree::new(node("shell", console));
+    let out = paint(&mut tree, Rect::new(0, 0, 12, 4));
+    let rows: Vec<&str> = out.lines().collect();
+    assert!(rows[1].contains("abcdefghij"), "got: {out}");
+    assert!(rows[2].contains("klmnopqrst"), "got: {out}");
+    assert!(rows[3].contains("uvwxyz"), "got: {out}");
+}
+
+#[test]
+fn wrapped_height_counts_wrapped_rows() {
+    let console = Console::new("yes").set_lines(vec!["abcdefghijklmnopqrstuvwxyz".into()]);
+    assert_eq!(console.wrapped_height(10), 4);
+    assert_eq!(console.wrapped_height(26), 2);
+}
+
+#[test]
 fn console_outline_reports_running_state() {
     let console = Console::new("cargo build").set_lines(vec!["one".into(), "two".into()]);
     assert_eq!(

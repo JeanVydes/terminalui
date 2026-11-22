@@ -15,6 +15,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use serde::Serialize;
 use std::any::Any;
+use unicode_width::UnicodeWidthChar;
 
 use terminalui_core::input::InputEvent;
 use terminalui_core::outline::quoted;
@@ -26,6 +27,32 @@ use super::scroll::{render_scrollbar, Scroll, ScrollbarStyle};
 
 const DEFAULT_MAX_VISIBLE: usize = 8;
 const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+fn wrap_line(line: &str, width: usize) -> Vec<String> {
+    let width = width.max(1);
+    if line.is_empty() {
+        return vec![String::new()];
+    }
+    let mut rows = Vec::new();
+    let mut row = String::new();
+    let mut cells = 0usize;
+    for character in line.chars() {
+        let size = character.width().unwrap_or(0).max(1);
+        if cells + size > width && !row.is_empty() {
+            rows.push(std::mem::take(&mut row));
+            cells = 0;
+        }
+        row.push(character);
+        cells += size;
+    }
+    if !row.is_empty() {
+        rows.push(row);
+    }
+    if rows.is_empty() {
+        rows.push(String::new());
+    }
+    rows
+}
 
 struct HeaderSlots {
     status_x: u16,
@@ -102,6 +129,8 @@ pub struct Console {
     lines: Vec<String>,
     max_visible: usize,
     expanded: bool,
+    #[serde(skip)]
+    content_width: usize,
 }
 
 impl Console {
@@ -115,6 +144,7 @@ impl Console {
             lines: Vec::new(),
             max_visible: DEFAULT_MAX_VISIBLE,
             expanded: false,
+            content_width: 0,
         }
     }
 
@@ -135,6 +165,15 @@ impl Console {
     /// Whether every retained line is shown.
     pub fn is_expanded(&self) -> bool {
         self.expanded
+    }
+
+    /// Height the console needs at `width`, counting wrapped output rows.
+    ///
+    /// Hosts that lay the console out before rendering should use this instead
+    /// of [`View::measure`], which reports the last rendered width.
+    pub fn wrapped_height(&self, width: u16) -> u16 {
+        let rows = self.visible_rows(usize::from(width)).max(1);
+        u16::try_from(rows.saturating_add(1)).unwrap_or(u16::MAX)
     }
 
     /// Flip between the collapsed window and the full output.
@@ -177,16 +216,37 @@ impl Console {
         &self.lines
     }
 
-    fn visible(&self) -> usize {
-        if self.expanded {
-            self.lines.len()
+    fn wrap_width(&self) -> usize {
+        self.content_width
+    }
+
+    fn wrapped_lines(&self, width: usize) -> Vec<String> {
+        if width == 0 {
+            return self.lines.clone();
+        }
+        self.lines
+            .iter()
+            .flat_map(|line| wrap_line(line, width))
+            .collect()
+    }
+
+    fn visible_rows(&self, width: usize) -> usize {
+        let total = if self.lines.is_empty() {
+            0
         } else {
-            self.lines.len().min(self.max_visible)
+            self.wrapped_lines(width).len()
+        };
+        if self.expanded {
+            total
+        } else {
+            total.min(self.max_visible)
         }
     }
 
     fn max_offset(&self) -> usize {
-        self.lines.len().saturating_sub(self.visible())
+        self.wrapped_lines(self.wrap_width())
+            .len()
+            .saturating_sub(self.visible_rows(self.wrap_width()))
     }
 
     fn clamp_offset(&self, offset: usize) -> usize {
@@ -362,32 +422,39 @@ impl Console {
     }
 
     fn paint_lines(&self, area: Rect, buf: &mut Buffer, output: Color, background: Color) {
-        let visible = self.visible().min(usize::from(area.height));
-        let start = self
-            .lines
+        let width = usize::from(area.width);
+        let wrapped = self.wrapped_lines(width);
+        let visible_rows = self.visible_rows(width);
+        let shown = visible_rows.min(usize::from(area.height));
+        let start = wrapped
             .len()
-            .saturating_sub(self.state.offset + self.visible());
-        for (row, index) in (start..start + visible).enumerate() {
-            let line = &self.lines[index];
-            let truncated: String = line.chars().take(area.width as usize).collect();
+            .saturating_sub(self.state.offset + visible_rows);
+        for (row, text) in wrapped.iter().skip(start).take(shown).enumerate() {
             buf.set_stringn(
                 area.x,
                 area.y + row as u16,
-                &truncated,
-                truncated.len(),
+                text,
+                text.len(),
                 Style::default().fg(output).bg(background),
             );
         }
     }
 
     fn paint_scrollbar(&self, area: Rect, buf: &mut Buffer, theme: &Theme) {
-        if self.expanded || self.lines.len() <= self.max_visible {
+        if self.expanded {
+            return;
+        }
+        let width = usize::from(area.width);
+        let total = self.wrapped_lines(width).len();
+        if total <= self.max_visible {
             return;
         }
         let scroll = Scroll {
-            offset: self.max_offset().saturating_sub(self.state.offset),
+            offset: total
+                .saturating_sub(self.visible_rows(width))
+                .saturating_sub(self.state.offset),
             viewport: self.max_visible,
-            total: self.lines.len(),
+            total,
         };
         render_scrollbar(buf, area, &ScrollbarStyle::default(), theme, &scroll);
     }
@@ -423,8 +490,10 @@ impl View for Console {
     }
 
     fn measure(&self) -> Option<(u16, u16)> {
-        let rows = self.visible().max(1);
-        Some((0, 1 + rows as u16))
+        Some((
+            0,
+            self.wrapped_height(u16::try_from(self.content_width).unwrap_or(u16::MAX)),
+        ))
     }
 
     fn children(&self) -> &[terminalui_core::Node] {
@@ -454,6 +523,8 @@ impl View for Console {
         if inner.height == 0 || inner.width < 4 {
             return;
         }
+        self.content_width = usize::from(inner.width);
+        self.state.offset = self.clamp_offset(self.state.offset);
 
         self.paint_header(
             inner,
@@ -537,6 +608,6 @@ impl View for Console {
     }
 
     fn focusable(&self) -> bool {
-        self.lines.len() > self.max_visible
+        self.wrapped_lines(self.wrap_width()).len() > self.max_visible
     }
 }
