@@ -9,7 +9,7 @@ use terminalui_core::input::InputEvent;
 use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
 
-use super::chrome::{draw_box, BorderSet, Chrome};
+use super::chrome::{draw_box, BorderSet, Chrome, Padding};
 
 /// A structural container with optional border and fill.
 ///
@@ -54,6 +54,16 @@ impl Panel {
         let mut panel = Self::new().with_chrome(Chrome::bordered(BorderSet::Plain, None));
         panel.emphasized = true;
         panel
+    }
+
+    /// A rounded panel using the theme's border and background defaults.
+    pub fn themed(
+        theme: &Theme,
+        border_color: Option<Color>,
+        background: Option<Color>,
+        padding: Padding,
+    ) -> Self {
+        Self::new().with_chrome(Chrome::themed(theme, border_color, background, padding))
     }
 
     /// Fill the panel with `color` instead of `theme.background`.

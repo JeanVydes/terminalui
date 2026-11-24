@@ -136,3 +136,29 @@ fn fill_gradient_replaces_the_solid_fill_and_tints_every_cell() {
         }
     }
 }
+
+#[test]
+fn themed_chrome_uses_theme_defaults_and_respects_overrides() {
+    let theme = Theme::default();
+    let padding = Padding {
+        horizontal: 2,
+        vertical: 1,
+    };
+
+    let defaults = Chrome::themed(&theme, None, None, padding);
+    let border = defaults.border.expect("rounded border");
+    assert_eq!(border.set, BorderSet::Rounded);
+    assert_eq!(border.radius, Radius::Small);
+    assert_eq!(border.color, Some(theme.border));
+    assert_eq!(defaults.background, Some(theme.background));
+    assert_eq!(defaults.padding, padding);
+
+    let border_color = Color::Red;
+    let background = Color::Blue;
+    let overrides = Chrome::themed(&theme, Some(border_color), Some(background), padding);
+    assert_eq!(
+        overrides.border.expect("rounded border").color,
+        Some(border_color)
+    );
+    assert_eq!(overrides.background, Some(background));
+}
