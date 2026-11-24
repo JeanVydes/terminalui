@@ -67,7 +67,7 @@ pub use outcome::Outcome;
 pub use pane::Pane;
 pub use spacer::Spacer;
 pub use stack::{Stack, StackDirection};
-pub use text::{Text, TextStyle};
+pub use text::{clip, Text, TextStyle};
 pub use theme::Theme;
 pub use tree::Tree;
 pub use view::View;

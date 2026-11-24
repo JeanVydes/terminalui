@@ -26,3 +26,10 @@ fn set_style_updates_the_rendered_color_without_replacing_the_text() {
         .contains(ratatui::style::Modifier::BOLD));
     assert_eq!(text.text(), "ready");
 }
+
+#[test]
+fn clip_keeps_short_text_and_marks_truncated_text() {
+    assert_eq!(super::clip("ready", 8), "ready");
+    assert_eq!(super::clip("hello world", 5), "hell…");
+    assert_eq!(super::clip("hello", 0), "…");
+}

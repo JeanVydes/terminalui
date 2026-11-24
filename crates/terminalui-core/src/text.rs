@@ -152,6 +152,17 @@ impl View for Text {
     }
 }
 
+/// Trim `text` to `limit` characters, marking a truncated value with an
+/// ellipsis. The ellipsis is included in `limit`.
+pub fn clip(text: &str, limit: usize) -> String {
+    if text.chars().count() <= limit {
+        return text.to_owned();
+    }
+    let mut out: String = text.chars().take(limit.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
 #[cfg(test)]
 #[path = "text_tests.rs"]
 mod tests;
