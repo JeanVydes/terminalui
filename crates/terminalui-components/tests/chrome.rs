@@ -150,7 +150,7 @@ fn themed_chrome_uses_theme_defaults_and_respects_overrides() {
     assert_eq!(border.set, BorderSet::Rounded);
     assert_eq!(border.radius, Radius::Small);
     assert_eq!(border.color, Some(theme.border));
-    assert_eq!(defaults.background, Some(theme.background));
+    assert_eq!(defaults.background, None);
     assert_eq!(defaults.padding, padding);
 
     let border_color = Color::Red;

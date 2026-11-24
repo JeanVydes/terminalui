@@ -195,8 +195,8 @@ impl Chrome {
 
     /// Rounded, themed chrome for ordinary surfaces.
     ///
-    /// The border falls back to `theme.border` and the fill to
-    /// `theme.background` when the caller passes `None`.
+    /// The border falls back to `theme.border` when the caller passes
+    /// `None`. The fill is left exactly as requested.
     pub fn themed(
         theme: &Theme,
         border_color: Option<Color>,
@@ -209,7 +209,7 @@ impl Chrome {
                 color: Some(border_color.unwrap_or(theme.border)),
                 radius: Radius::Small,
             }),
-            background: Some(background.unwrap_or(theme.background)),
+            background,
             radius: Radius::Small,
             padding,
             border_gradient: None,
