@@ -117,15 +117,20 @@ impl Stack {
             StackDirection::Vertical => Direction::Vertical,
             StackDirection::Horizontal => Direction::Horizontal,
         };
-        // Measured heights become `Length`: `Fill(1)` for every child makes
-        // the layout solver exponential in the number of children.
+        // Measured sizes along the stack axis become `Length`: `Fill(1)` for
+        // every child makes the layout solver exponential in the child count.
         let constraints: Vec<Constraint> = (0..self.children.len())
             .map(|index| {
                 self.constraints.get(index).copied().unwrap_or_else(|| {
-                    self.children[index]
-                        .view
-                        .measure()
-                        .map(|(_, height)| Constraint::Length(height))
+                    let measured =
+                        self.children[index].view.measure().map(
+                            |(width, height)| match direction {
+                                Direction::Horizontal => width,
+                                Direction::Vertical => height,
+                            },
+                        );
+                    measured
+                        .map(Constraint::Length)
                         .unwrap_or(Constraint::Fill(1))
                 })
             })
