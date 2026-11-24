@@ -180,6 +180,13 @@ impl Tabs {
         self.state.selected = index;
     }
 
+    /// Move the selection by one tab. Hosts that own tab shortcuts can use
+    /// this instead of implementing the wrap-around themselves.
+    pub fn step_selection(&mut self, forward: bool) {
+        let selected = self.state.selected;
+        self.state.selected = self.step(selected, forward);
+    }
+
     fn is_disabled(&self, index: usize) -> bool {
         self.children
             .get(index)

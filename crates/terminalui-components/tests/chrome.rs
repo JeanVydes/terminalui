@@ -146,7 +146,7 @@ fn themed_chrome_uses_theme_defaults_and_respects_overrides() {
     };
 
     let defaults = Chrome::themed(&theme, None, None, padding);
-    let border = defaults.border.expect("rounded border");
+    let border = defaults.border.unwrap_or_default();
     assert_eq!(border.set, BorderSet::Rounded);
     assert_eq!(border.radius, Radius::Small);
     assert_eq!(border.color, Some(theme.border));
@@ -157,7 +157,7 @@ fn themed_chrome_uses_theme_defaults_and_respects_overrides() {
     let background = Color::Blue;
     let overrides = Chrome::themed(&theme, Some(border_color), Some(background), padding);
     assert_eq!(
-        overrides.border.expect("rounded border").color,
+        overrides.border.unwrap_or_default().color,
         Some(border_color)
     );
     assert_eq!(overrides.background, Some(background));

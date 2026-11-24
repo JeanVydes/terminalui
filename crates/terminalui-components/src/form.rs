@@ -255,6 +255,20 @@ impl Form {
             .collect()
     }
 
+    /// Show or clear a host-provided error on a named field. Use this for
+    /// validation that completes after the form was submitted.
+    pub fn set_error(&mut self, name: &str, message: Option<impl Into<String>>) {
+        for child in &mut self.children {
+            let Some(field) = child.view.as_any().downcast_mut::<FormField>() else {
+                continue;
+            };
+            if field.name == name {
+                field.set_error(message);
+                return;
+            }
+        }
+    }
+
     /// Mark required fields empty and clear the error rows of the rest.
     /// Returns true when every field passed validation. On success the
     /// `(name, value)` pairs are buffered for [`Form::take_submitted`].

@@ -1,7 +1,7 @@
 //! A hierarchical tree. Nodes are host-provided data with one label each;
 //! the component owns expansion, cursor, scroll and hit-testing.
 
-use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
@@ -91,6 +91,21 @@ struct FlatRow<'a> {
     node: &'a TreeNode,
 }
 
+/// One visible row of a tree, as reported to the host.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TreeRow {
+    /// The label of the node.
+    pub label: String,
+    /// Depth from the root, starting at zero.
+    pub depth: usize,
+    /// Indices from the root to this node.
+    pub path: Vec<usize>,
+    /// Whether the node has children.
+    pub is_branch: bool,
+    /// Whether the branch is expanded.
+    pub expanded: bool,
+}
+
 /// A keyboard-navigable tree. Left/Right collapse/expand branches,
 /// Enter/Space toggle them, arrows move the cursor, and clicking a
 /// branch disclosure toggles it.
@@ -150,6 +165,64 @@ impl TreeView {
         self.flatten()
             .get(self.state.cursor)
             .map(|row| row.node.label.as_str())
+    }
+
+    /// Visible rows after expansion, in draw order.
+    pub fn rows(&self) -> Vec<TreeRow> {
+        self.flatten()
+            .into_iter()
+            .map(|row| TreeRow {
+                label: row.node.label.clone(),
+                depth: row.depth,
+                path: row.path,
+                is_branch: row.node.is_branch(),
+                expanded: row.node.expanded,
+            })
+            .collect()
+    }
+
+    /// The cursored row, when the tree is not empty.
+    pub fn selected_row(&self) -> Option<TreeRow> {
+        self.rows().into_iter().nth(self.state.cursor)
+    }
+
+    /// Move the cursor to a visible row.
+    pub fn set_cursor(&mut self, index: usize) -> Outcome {
+        self.move_cursor(index)
+    }
+
+    /// Toggle expansion of the cursored branch. Leaves consume the key
+    /// without changing anything, so hosts can act on the selection.
+    pub fn toggle_selected(&mut self) -> Outcome {
+        let Some(row) = self.selected_row() else {
+            return Outcome::Ignored;
+        };
+        if row.is_branch {
+            self.toggle_at(&row.path)
+        } else {
+            Outcome::Consumed
+        }
+    }
+
+    /// Handle a key press without requiring tree focus. Hosts that own key
+    /// dispatch can drive the tree directly.
+    pub fn handle_key(&mut self, key: &KeyEvent) -> Outcome {
+        if key.kind != KeyEventKind::Press {
+            return Outcome::Ignored;
+        }
+        let page = self.body_height().max(1);
+        match key.code {
+            KeyCode::Up => self.move_cursor(self.state.cursor.saturating_sub(1)),
+            KeyCode::Down => self.move_cursor(self.state.cursor + 1),
+            KeyCode::PageUp => self.move_cursor(self.state.cursor.saturating_sub(page)),
+            KeyCode::PageDown => self.move_cursor(self.state.cursor + page),
+            KeyCode::Home => self.move_cursor(0),
+            KeyCode::End => self.move_cursor(usize::MAX),
+            KeyCode::Right => self.collapse_expand(true),
+            KeyCode::Left => self.collapse_expand(false),
+            KeyCode::Enter | KeyCode::Char(' ') => self.toggle_selected(),
+            _ => Outcome::Ignored,
+        }
     }
 
     fn flatten(&self) -> Vec<FlatRow<'_>> {
@@ -370,35 +443,7 @@ impl View for TreeView {
     fn handle_event(&mut self, event: &InputEvent, cx: &mut Context) -> Outcome {
         self.state.focused = cx.is_focused();
         match event {
-            InputEvent::Key(key) => {
-                if !self.state.focused || key.kind != KeyEventKind::Press {
-                    return Outcome::Ignored;
-                }
-                let page = self.body_height().max(1);
-                match key.code {
-                    KeyCode::Up => self.move_cursor(self.state.cursor.saturating_sub(1)),
-                    KeyCode::Down => self.move_cursor(self.state.cursor + 1),
-                    KeyCode::PageUp => self.move_cursor(self.state.cursor.saturating_sub(page)),
-                    KeyCode::PageDown => self.move_cursor(self.state.cursor + page),
-                    KeyCode::Home => self.move_cursor(0),
-                    KeyCode::End => self.move_cursor(usize::MAX),
-                    KeyCode::Right => self.collapse_expand(true),
-                    KeyCode::Left => self.collapse_expand(false),
-                    KeyCode::Enter | KeyCode::Char(' ') => {
-                        let flat = self.flatten();
-                        let Some(row) = flat.get(self.state.cursor) else {
-                            return Outcome::Ignored;
-                        };
-                        let path = row.path.clone();
-                        if row.node.is_branch() {
-                            self.toggle_at(&path)
-                        } else {
-                            Outcome::Consumed
-                        }
-                    }
-                    _ => Outcome::Ignored,
-                }
-            }
+            InputEvent::Key(key) => self.handle_key(key),
             InputEvent::Mouse(mouse) => {
                 if !matches!(mouse.kind, MouseEventKind::Down(MouseButton::Left)) {
                     return Outcome::Ignored;

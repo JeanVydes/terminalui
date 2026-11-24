@@ -3,7 +3,7 @@
 //! focused and filtered while typing; Up/Down move the highlight, Enter
 //! applies it, Esc closes the popup and keeps the text.
 
-use crossterm::event::{KeyCode, KeyEventKind, MouseButton, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};
 use ratatui::style::{Modifier, Style};
@@ -90,6 +90,88 @@ impl Autocomplete {
     pub fn clear(&mut self) {
         self.field.clear();
         self.clamp_highlight();
+    }
+
+    /// Replace the inline text, keeping the suggestion list.
+    pub fn set_value(&mut self, value: impl Into<String>) {
+        self.field.set(value.into());
+        self.state.highlight = 0;
+        self.clamp_highlight();
+    }
+
+    /// Suggestions matching the current text, in their original order.
+    pub fn filtered(&self) -> Vec<String> {
+        self.matches()
+            .into_iter()
+            .map(|index| self.suggestions[index].clone())
+            .collect()
+    }
+
+    /// Handle a key press without requiring tree focus. Hosts that own key
+    /// dispatch can drive the field directly.
+    pub fn handle_key(&mut self, key: &KeyEvent) -> Outcome {
+        if key.kind != KeyEventKind::Press {
+            return Outcome::Ignored;
+        }
+        match key.code {
+            KeyCode::Up if self.state.open => self.nav(-1),
+            KeyCode::Down => {
+                if self.state.open {
+                    self.nav(1)
+                } else {
+                    self.state.open = true;
+                    self.clamp_highlight();
+                    Outcome::Consumed
+                }
+            }
+            KeyCode::Home => {
+                self.field.move_home();
+                Outcome::Consumed
+            }
+            KeyCode::End => {
+                self.field.move_end();
+                Outcome::Consumed
+            }
+            KeyCode::Enter => {
+                if self.state.open {
+                    self.apply_highlight()
+                } else {
+                    Outcome::Consumed
+                }
+            }
+            KeyCode::Esc if self.state.open => {
+                self.state.open = false;
+                Outcome::Consumed
+            }
+            KeyCode::Char(character) => {
+                self.field.insert(character);
+                self.state.open = true;
+                self.state.highlight = 0;
+                self.clamp_highlight();
+                Outcome::Consumed
+            }
+            KeyCode::Backspace => {
+                self.field.backspace();
+                self.state.open = true;
+                self.state.highlight = 0;
+                self.clamp_highlight();
+                Outcome::Consumed
+            }
+            KeyCode::Delete => {
+                self.field.delete();
+                self.clamp_highlight();
+                Outcome::Consumed
+            }
+            KeyCode::Left => {
+                self.field.move_left();
+                Outcome::Consumed
+            }
+            KeyCode::Right => {
+                self.field.move_right();
+                Outcome::Consumed
+            }
+            _ => Outcome::Ignored,
+        }
     }
 
     fn matches(&self) -> Vec<usize> {
@@ -288,70 +370,7 @@ impl View for Autocomplete {
             return Outcome::Ignored;
         }
         match event {
-            InputEvent::Key(key) => {
-                if key.kind != KeyEventKind::Press {
-                    return Outcome::Ignored;
-                }
-                match key.code {
-                    KeyCode::Up if self.state.open => self.nav(-1),
-                    KeyCode::Down => {
-                        if self.state.open {
-                            self.nav(1)
-                        } else {
-                            self.state.open = true;
-                            self.clamp_highlight();
-                            Outcome::Consumed
-                        }
-                    }
-                    KeyCode::Home => {
-                        self.field.move_home();
-                        Outcome::Consumed
-                    }
-                    KeyCode::End => {
-                        self.field.move_end();
-                        Outcome::Consumed
-                    }
-                    KeyCode::Enter => {
-                        if self.state.open {
-                            self.apply_highlight()
-                        } else {
-                            Outcome::Consumed
-                        }
-                    }
-                    KeyCode::Esc if self.state.open => {
-                        self.state.open = false;
-                        Outcome::Consumed
-                    }
-                    KeyCode::Char(character) => {
-                        self.field.insert(character);
-                        self.state.open = true;
-                        self.state.highlight = 0;
-                        self.clamp_highlight();
-                        Outcome::Consumed
-                    }
-                    KeyCode::Backspace => {
-                        self.field.backspace();
-                        self.state.open = true;
-                        self.state.highlight = 0;
-                        self.clamp_highlight();
-                        Outcome::Consumed
-                    }
-                    KeyCode::Delete => {
-                        self.field.delete();
-                        self.clamp_highlight();
-                        Outcome::Consumed
-                    }
-                    KeyCode::Left => {
-                        self.field.move_left();
-                        Outcome::Consumed
-                    }
-                    KeyCode::Right => {
-                        self.field.move_right();
-                        Outcome::Consumed
-                    }
-                    _ => Outcome::Ignored,
-                }
-            }
+            InputEvent::Key(key) => self.handle_key(key),
             InputEvent::Paste(text) => {
                 self.field.paste(text);
                 self.state.open = true;
