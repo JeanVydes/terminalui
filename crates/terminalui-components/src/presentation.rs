@@ -29,14 +29,14 @@ pub enum DotSize {
 /// every shading family except [`RenderStyle::Native`].
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct StyleTuning {
-    /// Halftone dot coverage. 2..=6: low values show few dots, high values
-    /// literally paint more cells into the ramp. Also picks the ramp length.
+    /// Halftone coverage from 2..=6. Higher values fill more of the glyph
+    /// ramp, or more Braille subpixels in components that render above cell resolution.
     pub density: u8,
     /// Gamma applied to the normalized intensity before picking a level.
     /// Above 1.0 the gradient saturates early (more ink); below 1.0 it leans
     /// sparse. Must stay inside 0.25..=4.0.
     pub contrast: f32,
-    /// Largest glyph a halftone (or square) ramp may reach.
+    /// Largest glyph a halftone or square ramp may reach, and Braille subpixel coverage.
     pub dotsize: DotSize,
 }
 

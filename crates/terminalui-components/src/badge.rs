@@ -178,7 +178,7 @@ impl View for Badge {
 
 fn contrasting_color(background: Color, theme: &Theme) -> Color {
     let background_luminance = rgb(background).map(luminance);
-    let foreground = [theme.background, theme.foreground]
+    [theme.background, theme.foreground]
         .into_iter()
         .max_by(|left, right| {
             let left_contrast = background_luminance
@@ -193,8 +193,7 @@ fn contrasting_color(background: Color, theme: &Theme) -> Color {
                 });
             left_contrast.total_cmp(&right_contrast)
         })
-        .unwrap_or(theme.foreground);
-    foreground
+        .unwrap_or(theme.foreground)
 }
 
 fn contrast(left: f64, right: f64) -> f64 {

@@ -12,7 +12,11 @@ use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
 
 use super::layout::{row, Align};
-use super::presentation::{RenderStyle, StyleTuning};
+use super::presentation::{DotSize, RenderStyle, StyleTuning};
+
+const BRAILLE_DOTS: [[u8; 2]; 4] = [[0, 3], [1, 4], [2, 5], [6, 7]];
+const BRAILLE_ORDER: [u8; 8] = [0, 7, 2, 5, 1, 6, 3, 4];
+const BRAILLE_RANK: [usize; 8] = [0, 4, 2, 6, 7, 3, 5, 1];
 
 /// One category in a pie chart.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -174,7 +178,7 @@ impl PieChart {
             .any(|slice| {
                 boundary += slice.value / scale;
                 let direct = (position - boundary).abs();
-                direct.min(total - direct) * std::f64::consts::TAU * radius < 0.65
+                direct.min(total - direct) * std::f64::consts::TAU * radius < 0.18
             })
     }
 }
@@ -253,6 +257,10 @@ impl PieChart {
         if area.width == 0 || area.height == 0 {
             return;
         }
+        if self.presentation == RenderStyle::Halftone {
+            self.paint_braille_circle(area, buf);
+            return;
+        }
         let diameter = f64::from(area.width.min(area.height.saturating_mul(2)));
         let radius = diameter / 2.0;
         let center_x = f64::from(area.x) + f64::from(area.width) / 2.0;
@@ -301,6 +309,80 @@ impl PieChart {
                 }
             }
         }
+    }
+
+    fn paint_braille_circle(&self, area: Rect, buf: &mut Buffer) {
+        let diameter = f64::from(area.width.min(area.height.saturating_mul(2)));
+        let radius = diameter / 2.0;
+        let center_x = f64::from(area.x) + f64::from(area.width) / 2.0;
+        let center_y = f64::from(area.y) * 2.0 + f64::from(area.height);
+        let density = usize::from(self.tuning.density.clamp(2, 6));
+        let size_bonus = match self.tuning.dotsize {
+            DotSize::Small => 0,
+            DotSize::Medium => 1,
+            DotSize::Large => 2,
+        };
+        let active_dots = (density + 2 + size_bonus).min(BRAILLE_ORDER.len());
+
+        for y in 0..area.height {
+            for x in 0..area.width {
+                let mut dot_colors = [None; 8];
+                for (dot_y, row) in BRAILLE_DOTS.iter().enumerate() {
+                    for (dot_x, dot) in row.iter().enumerate() {
+                        let pixel_x = f64::from(area.x + x) + (dot_x as f64 + 0.5) / 2.0;
+                        let pixel_y = f64::from(area.y + y) * 2.0 + (dot_y as f64 + 0.5) / 2.0;
+                        dot_colors[usize::from(*dot)] =
+                            self.halftone_dot(pixel_x - center_x, pixel_y - center_y, radius);
+                    }
+                }
+
+                let Some(color) = dominant_color(&dot_colors) else {
+                    continue;
+                };
+                let cell_x = usize::from(area.x + x);
+                let cell_y = usize::from(area.y + y);
+                let phase = (cell_x + cell_y * 3) % BRAILLE_ORDER.len();
+                let mut mask = 0_u8;
+                for (dot, dot_color) in dot_colors.iter().enumerate() {
+                    if *dot_color != Some(color) {
+                        continue;
+                    }
+                    let rank = BRAILLE_RANK[dot];
+                    if (rank + phase) % BRAILLE_ORDER.len() < active_dots {
+                        mask |= 1 << dot;
+                    }
+                }
+                if mask != 0 {
+                    let glyph = char::from_u32(0x2800 + u32::from(mask)).unwrap_or(' ');
+                    buf.set_string(
+                        area.x + x,
+                        area.y + y,
+                        glyph.to_string(),
+                        Style::default().fg(color),
+                    );
+                }
+            }
+        }
+    }
+
+    fn halftone_dot(&self, dx: f64, dy: f64, radius: f64) -> Option<Color> {
+        let distance = dx.hypot(dy);
+        if distance > radius || radius == 0.0 {
+            return None;
+        }
+        let angle = dy.atan2(dx).rem_euclid(std::f64::consts::TAU);
+        if self.near_slice_edge(angle, radius) {
+            return None;
+        }
+        let radial = (distance / radius).clamp(0.0, 1.0) as f32;
+        let intensity = if radial < 0.78 {
+            1.0
+        } else {
+            ((1.0 - radial) / 0.22).clamp(0.0, 1.0)
+        };
+        (RenderStyle::Halftone.shade(intensity, &self.tuning) != " ")
+            .then(|| self.color_at(angle))
+            .flatten()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -390,4 +472,20 @@ impl PieChart {
             }
         }
     }
+}
+
+fn dominant_color(colors: &[Option<Color>; 8]) -> Option<Color> {
+    let mut selected = None;
+    let mut selected_count = 0;
+    for color in colors.iter().flatten().copied() {
+        let count = colors
+            .iter()
+            .filter(|candidate| **candidate == Some(color))
+            .count();
+        if count > selected_count {
+            selected = Some(color);
+            selected_count = count;
+        }
+    }
+    selected
 }
