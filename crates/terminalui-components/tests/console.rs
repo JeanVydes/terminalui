@@ -53,6 +53,21 @@ fn console_renders_command_and_waiting_placeholder() {
 }
 
 #[test]
+fn labeled_console_separates_output_from_the_command() {
+    let mut tree = single(node(
+        "shell",
+        Console::new("echo hello")
+            .with_header_label("stdout")
+            .set_lines(vec!["hello".into()]),
+    ));
+    let out = paint(&mut tree, Rect::new(0, 0, 40, 3));
+    let header = out.lines().next().expect("console header");
+    assert!(header.contains("stdout"));
+    assert!(!header.contains("echo hello"));
+    assert!(out.contains("hello"));
+}
+
+#[test]
 fn console_reports_exit_status_in_the_header() {
     let console = Console::new("cargo test").set_lines(vec!["ok".into()]);
     assert_eq!(console.status, ConsoleStatus::Running);
