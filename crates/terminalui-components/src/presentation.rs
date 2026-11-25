@@ -8,10 +8,10 @@
 //! `RenderStyle::Native` is the default: each component resolves it to the
 //! glyph set its author drew it with. The rest are shared presets.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Dot glyph a halftone ramp may reach at full intensity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum DotSize {
