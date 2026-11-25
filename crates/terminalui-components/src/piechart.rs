@@ -327,7 +327,11 @@ impl PieChart {
         }
         let radial = (dx.mul_add(dx, dy * dy).sqrt() / radius).clamp(0.0, 1.0) as f32;
         let color = self.color_at(angle)?;
-        let intensity = 0.58 + (1.0 - radial) * 0.28 + (angle as f32 * 9.0).sin().abs() * 0.12;
+        let intensity = if radial < 0.78 {
+            1.0
+        } else {
+            ((1.0 - radial) / 0.22).clamp(0.0, 1.0)
+        };
         let glyph = self.presentation.shade(intensity, &self.tuning);
         Some((color, glyph))
     }
