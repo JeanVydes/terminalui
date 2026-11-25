@@ -206,11 +206,11 @@ fn the_header_line_count_follows_new_output() {
         .push_line("two");
     let text = paint(&mut tree, area);
     assert!(text.contains("2 lines"), "got: {text}");
-    assert!(text.contains("[+]"), "got: {text}");
+    assert!(text.contains("[-]"), "got: {text}");
 }
 
 #[test]
-fn clicking_the_header_toggles_expansion() {
+fn clicking_the_header_hides_and_shows_output() {
     let mut tree = single(node("shell", Console::new("yes")));
     let mut buffer = Buffer::empty(Rect::new(0, 0, 40, 3));
     tree.render(Rect::new(0, 0, 40, 3), &mut buffer, &Theme::default());
@@ -221,16 +221,16 @@ fn clicking_the_header_toggles_expansion() {
         modifiers: KeyModifiers::NONE,
     });
     assert_eq!(tree.handle_event(&click), Outcome::Consumed);
-    assert!(tree
-        .find::<Console>("shell")
-        .expect("console")
-        .is_expanded());
-
-    assert_eq!(tree.handle_event(&click), Outcome::Consumed);
     assert!(!tree
         .find::<Console>("shell")
         .expect("console")
-        .is_expanded());
+        .is_output_visible());
+
+    assert_eq!(tree.handle_event(&click), Outcome::Consumed);
+    assert!(tree
+        .find::<Console>("shell")
+        .expect("console")
+        .is_output_visible());
 }
 
 #[test]

@@ -12,6 +12,7 @@ use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
 
 use super::layout::{row, Align};
+use super::presentation::{RenderStyle, StyleTuning};
 
 /// One category in a pie chart.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -70,6 +71,8 @@ pub struct PieChart {
     pub state: PieChartState,
     children: Vec<Node>,
     slices: Vec<PieSlice>,
+    presentation: RenderStyle,
+    tuning: StyleTuning,
 }
 
 impl PieChart {
@@ -82,6 +85,8 @@ impl PieChart {
             },
             children: Vec::new(),
             slices: Vec::new(),
+            presentation: RenderStyle::Native,
+            tuning: StyleTuning::default(),
         }
     }
 
@@ -97,6 +102,28 @@ impl PieChart {
     pub fn with_slices(mut self, slices: Vec<PieSlice>) -> Self {
         self.set_slices(slices);
         self
+    }
+
+    /// Chooses the glyph family used to draw the slices.
+    pub fn with_presentation(mut self, presentation: RenderStyle) -> Self {
+        self.presentation = presentation;
+        self
+    }
+
+    /// Replaces the glyph family used to draw the slices.
+    pub fn set_presentation(&mut self, presentation: RenderStyle) {
+        self.presentation = presentation;
+    }
+
+    /// Tunes density, contrast and halftone dot size for alternate glyphs.
+    pub fn with_tuning(mut self, tuning: StyleTuning) -> Self {
+        self.tuning = tuning.clamped();
+        self
+    }
+
+    /// Replaces the density, contrast and dot size used by alternate glyphs.
+    pub fn set_tuning(&mut self, tuning: StyleTuning) {
+        self.tuning = tuning.clamped();
     }
 
     /// Composes a caption row above the chart.
@@ -131,6 +158,24 @@ impl PieChart {
             cumulative += slice.value / scale;
             (slice.value > 0.0 && position < cumulative).then_some(slice.color)
         })
+    }
+
+    fn near_slice_edge(&self, angle: f64, radius: f64) -> bool {
+        let scale = self.scale();
+        let total = self.total_scaled(scale);
+        if total <= 0.0 || radius <= 0.0 {
+            return false;
+        }
+        let position = (angle / std::f64::consts::TAU).rem_euclid(1.0) * total;
+        let mut boundary = 0.0;
+        self.slices
+            .iter()
+            .filter(|slice| slice.value > 0.0)
+            .any(|slice| {
+                boundary += slice.value / scale;
+                let direct = (position - boundary).abs();
+                direct.min(total - direct) * std::f64::consts::TAU * radius < 0.65
+            })
     }
 }
 
@@ -216,11 +261,19 @@ impl PieChart {
             for x in 0..area.width {
                 let top = self.pixel_color(area, x, y, 0, center_x, center_y_pixels, radius);
                 let bottom = self.pixel_color(area, x, y, 1, center_x, center_y_pixels, radius);
-                match (top, bottom) {
-                    (Some(top), Some(bottom)) if top == bottom => {
-                        buf.set_string(area.x + x, area.y + y, "█", Style::default().fg(top));
+                if self.presentation != RenderStyle::Native {
+                    if let Some((color, glyph)) = top.or(bottom) {
+                        buf.set_string(area.x + x, area.y + y, glyph, Style::default().fg(color));
                     }
-                    (Some(top), Some(bottom)) => {
+                    continue;
+                }
+                match (top, bottom) {
+                    (Some((top, top_glyph)), Some((bottom, bottom_glyph)))
+                        if top == bottom && top_glyph == bottom_glyph =>
+                    {
+                        buf.set_string(area.x + x, area.y + y, top_glyph, Style::default().fg(top));
+                    }
+                    (Some((top, _)), Some((bottom, _))) => {
                         buf.set_string(
                             area.x + x,
                             area.y + y,
@@ -228,19 +281,19 @@ impl PieChart {
                             Style::default().fg(top).bg(bottom),
                         );
                     }
-                    (Some(color), None) => {
+                    (Some((color, glyph)), None) => {
                         buf.set_string(
                             area.x + x,
                             area.y + y,
-                            "▀",
+                            if glyph == "█" { "▀" } else { glyph },
                             Style::default().fg(color).bg(theme.background),
                         );
                     }
-                    (None, Some(color)) => {
+                    (None, Some((color, glyph))) => {
                         buf.set_string(
                             area.x + x,
                             area.y + y,
-                            "▄",
+                            if glyph == "█" { "▄" } else { glyph },
                             Style::default().fg(color).bg(theme.background),
                         );
                     }
@@ -260,7 +313,7 @@ impl PieChart {
         center_x: f64,
         center_y_pixels: f64,
         radius: f64,
-    ) -> Option<Color> {
+    ) -> Option<(Color, &'static str)> {
         let pixel_x = f64::from(area.x + x) + 0.5;
         let pixel_y = f64::from(area.y + y) * 2.0 + f64::from(half) + 0.5;
         let dx = pixel_x - center_x;
@@ -269,7 +322,14 @@ impl PieChart {
             return None;
         }
         let angle = dy.atan2(dx).rem_euclid(std::f64::consts::TAU);
-        self.color_at(angle)
+        if self.near_slice_edge(angle, radius) {
+            return None;
+        }
+        let radial = (dx.mul_add(dx, dy * dy).sqrt() / radius).clamp(0.0, 1.0) as f32;
+        let color = self.color_at(angle)?;
+        let intensity = 0.58 + (1.0 - radial) * 0.28 + (angle as f32 * 9.0).sin().abs() * 0.12;
+        let glyph = self.presentation.shade(intensity, &self.tuning);
+        Some((color, glyph))
     }
 
     fn paint_legend(&self, area: Rect, buf: &mut Buffer, theme: &Theme) {

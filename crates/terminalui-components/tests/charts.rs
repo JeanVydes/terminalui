@@ -119,6 +119,28 @@ fn pie_chart_renders_slices_and_their_percentages() {
 }
 
 #[test]
+fn pie_chart_alternate_presentation_uses_configured_glyphs() {
+    use terminalui_components::piechart::{PieChart, PieSlice};
+    use terminalui_components::presentation::{RenderStyle, StyleTuning};
+    let chart = PieChart::new()
+        .with_slices(vec![
+            PieSlice::new("one", 1.0, ratatui::style::Color::Red),
+            PieSlice::new("two", 1.0, ratatui::style::Color::Blue),
+        ])
+        .with_presentation(RenderStyle::Ascii)
+        .with_tuning(StyleTuning {
+            density: 6,
+            contrast: 2.0,
+            dotsize: Default::default(),
+        });
+    let buffer = render(chart, Rect::new(0, 0, 32, 14));
+    assert!(buffer
+        .content
+        .iter()
+        .any(|cell| matches!(cell.symbol(), "#" | "@")));
+}
+
+#[test]
 fn zero_open_candle_shows_unavailable_change_without_non_finite_text() {
     let candle = Candle {
         open: 0.0,

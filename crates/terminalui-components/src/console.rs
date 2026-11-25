@@ -146,6 +146,8 @@ pub struct ConsoleStyle {
 pub struct Console {
     /// The command as typed.
     pub command: String,
+    /// Optional label used in place of the command in the header.
+    pub header_label: Option<String>,
     /// Run state; `Running` animates the header spinner.
     pub status: ConsoleStatus,
     /// Public state: area, scroll offset and spinner frame.
@@ -157,6 +159,7 @@ pub struct Console {
     max_visible: usize,
     max_retained_lines: Option<usize>,
     expanded: bool,
+    output_visible: bool,
     pending_line: bool,
     #[serde(skip)]
     content_width: usize,
@@ -167,6 +170,7 @@ impl Console {
     pub fn new(command: impl Into<String>) -> Self {
         Self {
             command: command.into(),
+            header_label: None,
             status: ConsoleStatus::Running,
             state: ConsoleState::default(),
             style: ConsoleStyle::default(),
@@ -175,6 +179,7 @@ impl Console {
             max_visible: DEFAULT_MAX_VISIBLE,
             max_retained_lines: None,
             expanded: false,
+            output_visible: true,
             pending_line: false,
             content_width: 0,
         }
@@ -213,6 +218,28 @@ impl Console {
         self
     }
 
+    /// Label the output panel without repeating the shell command.
+    pub fn with_header_label(mut self, label: impl Into<String>) -> Self {
+        self.header_label = Some(label.into());
+        self
+    }
+
+    /// Start with output rows hidden while retaining the panel header.
+    pub fn with_output_visible(mut self, visible: bool) -> Self {
+        self.output_visible = visible;
+        self
+    }
+
+    /// Whether output rows are visible.
+    pub fn is_output_visible(&self) -> bool {
+        self.output_visible
+    }
+
+    /// Hide or reveal the output rows.
+    pub fn toggle_output_visible(&mut self) {
+        self.output_visible = !self.output_visible;
+    }
+
     /// Whether every retained line is shown.
     pub fn is_expanded(&self) -> bool {
         self.expanded
@@ -223,7 +250,11 @@ impl Console {
     /// Hosts that lay the console out before rendering should use this instead
     /// of [`View::measure`], which reports the last rendered width.
     pub fn wrapped_height(&self, width: u16) -> u16 {
-        let rows = self.visible_rows(usize::from(width)).max(1);
+        let rows = if self.output_visible {
+            self.visible_rows(usize::from(width)).max(1)
+        } else {
+            0
+        };
         u16::try_from(rows.saturating_add(1)).unwrap_or(u16::MAX)
     }
 
@@ -404,8 +435,12 @@ impl Console {
 
     fn header_slots(&self, inner: Rect, theme: &Theme) -> HeaderSlots {
         let (status_text, status_color) = self.status_label(theme);
-        let count_text = format!("{} lines", self.lines.len());
-        let marker_text = if self.expanded { "[-]" } else { "[+]" };
+        let count_text = format!(
+            "{} lines · {}",
+            self.lines.len(),
+            if self.expanded { "all" } else { "recent" }
+        );
+        let marker_text = if self.output_visible { "[-]" } else { "[+]" };
         let gap = 1u16;
         let status_width = u16::try_from(status_text.chars().count()).unwrap_or(u16::MAX);
         let count_width = u16::try_from(count_text.chars().count()).unwrap_or(u16::MAX);
@@ -451,7 +486,20 @@ impl Console {
     fn paint_header(&self, inner: Rect, buf: &mut Buffer, theme: &Theme, background: Color) {
         let slots = self.header_slots(inner, theme);
         buf.set_style(Rect { height: 1, ..inner }, Style::default().bg(background));
-        Self::paint_slot(buf, inner.x, inner.y, "$ ", theme.accent, background, true);
+        let prefix = if self.header_label.is_some() {
+            ""
+        } else {
+            "$ "
+        };
+        Self::paint_slot(
+            buf,
+            inner.x,
+            inner.y,
+            prefix,
+            theme.accent,
+            background,
+            true,
+        );
         self.paint_command(inner, buf, theme, background, &slots);
         Self::paint_slot(
             buf,
@@ -493,11 +541,18 @@ impl Console {
         background: Color,
         slots: &HeaderSlots,
     ) {
-        let command_width = slots.status_x.saturating_sub(inner.x + 2).saturating_sub(1);
-        let command_text = clip_cells(&self.command, usize::from(command_width));
+        let prefix_width = if self.header_label.is_some() { 0 } else { 2 };
+        let command_width = slots
+            .status_x
+            .saturating_sub(inner.x + prefix_width)
+            .saturating_sub(1);
+        let command_text = clip_cells(
+            self.header_label.as_deref().unwrap_or(&self.command),
+            usize::from(command_width),
+        );
         Self::paint_slot(
             buf,
-            inner.x + 2,
+            inner.x + prefix_width,
             inner.y,
             &command_text,
             self.style.command.unwrap_or(theme.foreground),
@@ -673,6 +728,9 @@ impl View for Console {
             theme,
             chrome.background.unwrap_or(theme.secondary),
         );
+        if !self.output_visible {
+            return;
+        }
         let output_area = Rect {
             y: inner.y + 1,
             height: inner.height - 1,
@@ -698,7 +756,7 @@ impl View for Console {
                     && mouse.column >= self.state.area.x
                     && mouse.column < self.state.area.x + self.state.area.width;
                 if header_click {
-                    self.toggle_expanded();
+                    self.toggle_output_visible();
                     return Outcome::Consumed;
                 }
                 if mouse.kind == MouseEventKind::ScrollUp {
