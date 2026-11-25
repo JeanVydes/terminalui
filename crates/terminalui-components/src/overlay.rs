@@ -33,7 +33,7 @@ fn dim(theme: &Theme) -> Color {
             (green as u32 * 40 / 100) as u8,
             (blue as u32 * 40 / 100) as u8,
         ),
-        _ => Color::Black,
+        _ => theme.muted,
     }
 }
 

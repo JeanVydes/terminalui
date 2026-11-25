@@ -55,13 +55,16 @@ pub struct Badge {
     /// Where the badge rendered in the last pass; the host may read it.
     pub state: BadgeState,
     children: Vec<Node>,
+    themed_content: bool,
 }
 
 impl Badge {
     /// Convenience constructor: the content is a single [`Text`] view.
     pub fn new(content: impl Into<String>) -> Self {
-        let text = Text::new(content).with_style(TextStyle::default().fg(Color::White).bold());
-        Self::with_children(vec![node("content", text)])
+        let text = Text::new(content);
+        let mut badge = Self::with_children(vec![node("content", text)]);
+        badge.themed_content = true;
+        badge
     }
 }
 
@@ -75,6 +78,7 @@ impl Badge {
                 area: Rect::new(0, 0, 0, 0),
             },
             children,
+            themed_content: false,
         }
     }
 
@@ -146,6 +150,19 @@ impl View for Badge {
         let width = self.content_width().min(area.width);
         let padding = self.style.padding_x.unwrap_or(1);
         let background = self.style.background.unwrap_or(self.background(theme));
+        if self.themed_content {
+            if let Some(text) = self
+                .children
+                .first_mut()
+                .and_then(|node| node.view.as_any().downcast_mut::<Text>())
+            {
+                let mut style = TextStyle::default().fg(contrasting_color(background, theme));
+                if self.style.bold.unwrap_or(true) {
+                    style = style.bold();
+                }
+                text.set_style(style);
+            }
+        }
         let rect = Rect::new(area.x, area.y, width.max(1), 1);
         buf.set_style(rect, Style::default().bg(background));
         let inner_x = rect.x + padding.min(width);
@@ -156,5 +173,106 @@ impl View for Badge {
 
     fn handle_event(&mut self, _event: &InputEvent, _cx: &mut Context) -> Outcome {
         Outcome::Ignored
+    }
+}
+
+fn contrasting_color(background: Color, theme: &Theme) -> Color {
+    let background_luminance = rgb(background).map(luminance);
+    let foreground = [theme.background, theme.foreground]
+        .into_iter()
+        .max_by(|left, right| {
+            let left_contrast = background_luminance
+                .zip(rgb(*left).map(luminance))
+                .map_or(0.0, |(background, foreground)| {
+                    contrast(background, foreground)
+                });
+            let right_contrast = background_luminance
+                .zip(rgb(*right).map(luminance))
+                .map_or(0.0, |(background, foreground)| {
+                    contrast(background, foreground)
+                });
+            left_contrast.total_cmp(&right_contrast)
+        })
+        .unwrap_or(theme.foreground);
+    foreground
+}
+
+fn contrast(left: f64, right: f64) -> f64 {
+    (left.max(right) + 0.05) / (left.min(right) + 0.05)
+}
+
+fn luminance((red, green, blue): (u8, u8, u8)) -> f64 {
+    let channel = |value: u8| {
+        let value = f64::from(value) / 255.0;
+        if value <= 0.04045 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue)
+}
+
+fn rgb(color: Color) -> Option<(u8, u8, u8)> {
+    match color {
+        Color::Rgb(red, green, blue) => Some((red, green, blue)),
+        Color::Indexed(index) => indexed_rgb(index),
+        Color::Reset => None,
+        Color::Black => Some((0, 0, 0)),
+        Color::Red => Some((205, 49, 49)),
+        Color::Green => Some((13, 188, 121)),
+        Color::Yellow => Some((229, 229, 16)),
+        Color::Blue => Some((36, 114, 200)),
+        Color::Magenta => Some((188, 63, 188)),
+        Color::Cyan => Some((17, 168, 205)),
+        Color::Gray => Some((229, 229, 229)),
+        Color::DarkGray => Some((102, 102, 102)),
+        Color::LightRed => Some((241, 76, 76)),
+        Color::LightGreen => Some((35, 209, 139)),
+        Color::LightYellow => Some((245, 245, 67)),
+        Color::LightBlue => Some((59, 142, 234)),
+        Color::LightMagenta => Some((214, 112, 214)),
+        Color::LightCyan => Some((41, 184, 219)),
+        Color::White => Some((255, 255, 255)),
+    }
+}
+
+fn indexed_rgb(index: u8) -> Option<(u8, u8, u8)> {
+    const ANSI: [(u8, u8, u8); 16] = [
+        (0, 0, 0),
+        (205, 49, 49),
+        (13, 188, 121),
+        (229, 229, 16),
+        (36, 114, 200),
+        (188, 63, 188),
+        (17, 168, 205),
+        (229, 229, 229),
+        (102, 102, 102),
+        (241, 76, 76),
+        (35, 209, 139),
+        (245, 245, 67),
+        (59, 142, 234),
+        (214, 112, 214),
+        (41, 184, 219),
+        (255, 255, 255),
+    ];
+    match index {
+        0..=15 => ANSI.get(usize::from(index)).copied(),
+        16..=231 => {
+            let cube = usize::from(index - 16);
+            let component = |value: usize| match value {
+                0 => 0,
+                value => 55 + 40 * value,
+            } as u8;
+            Some((
+                component(cube / 36),
+                component((cube / 6) % 6),
+                component(cube % 6),
+            ))
+        }
+        232..=255 => {
+            let gray = 8 + 10 * (index - 232);
+            Some((gray, gray, gray))
+        }
     }
 }

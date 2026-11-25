@@ -469,7 +469,7 @@ fn dim(buf: &mut Buffer, area: Rect, theme: &Theme) {
             (green as u32 * 40 / 100) as u8,
             (blue as u32 * 40 / 100) as u8,
         ),
-        _ => Color::Black,
+        _ => theme.muted,
     };
     for y in area.y..area.y + area.height {
         buf.set_string(
@@ -494,7 +494,7 @@ fn render_field(buf: &mut Buffer, inner: Rect, field: &LineField, theme: &Theme)
             "Search commands…",
             Style::default().fg(theme.muted),
         );
-        let cursor_style = Style::default().fg(Color::Black).bg(theme.accent);
+        let cursor_style = Style::default().fg(theme.background).bg(theme.accent);
         buf.set_string(text_x, y, " ", cursor_style);
         return;
     }
