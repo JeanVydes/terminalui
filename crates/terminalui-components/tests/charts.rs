@@ -3,6 +3,7 @@ use ratatui::layout::Rect;
 use terminalui_components::axis::{format_value, nice_domain, nice_max};
 use terminalui_components::candlechart::{Candle, CandleChart};
 use terminalui_components::linechart::{LineChart, LineChartStyle};
+use terminalui_components::piechart::{PieChart, PieSlice};
 use terminalui_components::scroll::{ScrollbarStyle, ScrollbarVisibility};
 use terminalui_core::theme::Theme;
 use terminalui_core::{node, Text, Tree};
@@ -79,6 +80,42 @@ fn line_chart_history_keeps_the_newest_samples() {
     assert_eq!(series.as_array().map(Vec::len), Some(240));
     assert_eq!(series[0], 60.0);
     assert_eq!(series[239], 299.0);
+}
+
+#[test]
+fn line_chart_preserves_missing_samples_as_timeline_gaps() {
+    let mut chart = LineChart::new().with_style(LineChartStyle {
+        line: Some(ratatui::style::Color::Red),
+        ..LineChartStyle::default()
+    });
+    chart.set_gapped_series(vec![Some(1.0), None, Some(1.0)]);
+    let area = Rect::new(0, 0, 48, 14);
+    let buffer = render(chart, area);
+    let red_dots_in_gap = (13..26).any(|x| {
+        (2..10).any(|y| {
+            buffer[(x, y)].symbol() == "●" && buffer[(x, y)].fg == ratatui::style::Color::Red
+        })
+    });
+
+    assert!(!red_dots_in_gap);
+}
+
+#[test]
+fn pie_chart_renders_slices_and_their_percentages() {
+    let chart = PieChart::new().with_slices(vec![
+        PieSlice::new("provider A", 3.0, ratatui::style::Color::Red),
+        PieSlice::new("provider B", 1.0, ratatui::style::Color::Blue),
+    ]);
+    let area = Rect::new(0, 0, 64, 16);
+    let buffer = render(chart, area);
+    let output = painted(&buffer, area);
+
+    assert!(output.contains("provider A"));
+    assert!(output.contains("75.0%"));
+    assert!(output.contains("25.0%"));
+    assert!(
+        (0..area.width).any(|x| buffer[(x, 8)].symbol() == "▀" || buffer[(x, 8)].symbol() == "█")
+    );
 }
 
 #[test]

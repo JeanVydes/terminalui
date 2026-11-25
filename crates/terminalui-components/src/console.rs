@@ -54,6 +54,32 @@ fn wrap_line(line: &str, width: usize) -> Vec<String> {
     rows
 }
 
+fn clip_cells(text: &str, width: usize) -> String {
+    let total_width = text
+        .chars()
+        .map(|character| character.width().unwrap_or(0))
+        .sum::<usize>();
+    if total_width <= width {
+        return text.to_owned();
+    }
+    if width == 0 {
+        return String::new();
+    }
+    let mut clipped = String::new();
+    let mut cells = 0usize;
+    let target = width.saturating_sub(1);
+    for character in text.chars() {
+        let size = character.width().unwrap_or(0);
+        if cells.saturating_add(size) > target {
+            break;
+        }
+        clipped.push(character);
+        cells = cells.saturating_add(size);
+    }
+    clipped.push('…');
+    clipped
+}
+
 struct HeaderSlots {
     status_x: u16,
     status_text: String,
@@ -127,9 +153,11 @@ pub struct Console {
     /// Per-instance overrides; defaults match the theme.
     pub style: ConsoleStyle,
     lines: Vec<String>,
+    error_lines: Vec<bool>,
     max_visible: usize,
     max_retained_lines: Option<usize>,
     expanded: bool,
+    pending_line: bool,
     #[serde(skip)]
     content_width: usize,
 }
@@ -143,9 +171,11 @@ impl Console {
             state: ConsoleState::default(),
             style: ConsoleStyle::default(),
             lines: Vec::new(),
+            error_lines: Vec::new(),
             max_visible: DEFAULT_MAX_VISIBLE,
             max_retained_lines: None,
             expanded: false,
+            pending_line: false,
             content_width: 0,
         }
     }
@@ -206,6 +236,8 @@ impl Console {
     /// Replace the output lines entirely; scroll resets to the tail.
     pub fn set_lines(mut self, lines: Vec<String>) -> Self {
         self.lines = lines;
+        self.error_lines = vec![false; self.lines.len()];
+        self.pending_line = false;
         self.trim_retained_lines();
         self.state.offset = 0;
         self
@@ -220,7 +252,49 @@ impl Console {
     /// Append a line to the output and apply the configured retention limit.
     pub fn push_line(&mut self, line: impl Into<String>) {
         self.lines.push(line.into());
+        self.error_lines.push(false);
+        self.pending_line = false;
         self.trim_retained_lines();
+        self.state.offset = self.clamp_offset(self.state.offset);
+    }
+
+    /// Append a standard-error line with the theme's error color.
+    pub fn push_error_line(&mut self, line: impl Into<String>) {
+        self.lines.push(line.into());
+        self.error_lines.push(true);
+        self.pending_line = false;
+        self.trim_retained_lines();
+        self.state.offset = self.clamp_offset(self.state.offset);
+    }
+
+    /// Append a streaming text chunk, joining partial lines across chunks.
+    pub fn push_chunk(&mut self, chunk: &str, is_error: bool) {
+        for segment in chunk.split_inclusive('\n') {
+            let terminated = segment.ends_with('\n');
+            let text = segment.strip_suffix('\n').unwrap_or(segment);
+            if self.pending_line && self.error_lines.last() == Some(&is_error) {
+                if let Some(line) = self.lines.last_mut() {
+                    line.push_str(text);
+                }
+            } else {
+                self.lines.push(text.to_owned());
+                self.error_lines.push(is_error);
+            }
+            self.pending_line = !terminated;
+        }
+        self.trim_retained_lines();
+        self.state.offset = self.clamp_offset(self.state.offset);
+    }
+
+    /// Keep the newest `count` lines, including their stream styles.
+    pub fn retain_last_lines(&mut self, count: usize) {
+        let excess = self.lines.len().saturating_sub(count);
+        if excess == 0 {
+            return;
+        }
+        self.lines.drain(..excess);
+        self.error_lines.drain(..excess);
+        self.state.offset = self.state.offset.saturating_sub(excess);
         self.state.offset = self.clamp_offset(self.state.offset);
     }
 
@@ -239,6 +313,11 @@ impl Console {
         &self.lines
     }
 
+    /// Whether a retained line came from standard error.
+    pub fn line_is_error(&self, index: usize) -> bool {
+        self.error_lines.get(index).copied().unwrap_or(false)
+    }
+
     fn trim_retained_lines(&mut self) {
         let Some(limit) = self.max_retained_lines else {
             return;
@@ -246,6 +325,7 @@ impl Console {
         let excess = self.lines.len().saturating_sub(limit);
         if excess > 0 {
             self.lines.drain(..excess);
+            self.error_lines.drain(..excess);
             self.state.offset = 0;
         }
     }
@@ -254,13 +334,24 @@ impl Console {
         self.content_width
     }
 
-    fn wrapped_lines(&self, width: usize) -> Vec<String> {
+    fn wrapped_lines(&self, width: usize) -> Vec<(String, bool)> {
         if width == 0 {
-            return self.lines.clone();
+            return self
+                .lines
+                .iter()
+                .cloned()
+                .zip(self.error_lines.iter().copied())
+                .collect();
         }
         self.lines
             .iter()
-            .flat_map(|line| wrap_line(line, width))
+            .enumerate()
+            .flat_map(|(index, line)| {
+                let is_error = self.error_lines.get(index).copied().unwrap_or(false);
+                wrap_line(line, width)
+                    .into_iter()
+                    .map(move |wrapped| (wrapped, is_error))
+            })
             .collect()
     }
 
@@ -403,11 +494,7 @@ impl Console {
         slots: &HeaderSlots,
     ) {
         let command_width = slots.status_x.saturating_sub(inner.x + 2).saturating_sub(1);
-        let command_text: String = self
-            .command
-            .chars()
-            .take(usize::from(command_width))
-            .collect();
+        let command_text = clip_cells(&self.command, usize::from(command_width));
         Self::paint_slot(
             buf,
             inner.x + 2,
@@ -423,10 +510,15 @@ impl Console {
         let output = self.style.output.unwrap_or(theme.muted);
         Self::paint_output_background(area, buf, theme.secondary);
         if self.lines.is_empty() {
-            Self::paint_placeholder(area, buf, output, theme.secondary);
+            let placeholder = if self.is_running() {
+                "waiting for output..."
+            } else {
+                "no output"
+            };
+            Self::paint_placeholder(area, buf, output, theme.secondary, placeholder);
             return;
         }
-        self.paint_lines(area, buf, output, theme.secondary);
+        self.paint_lines(area, buf, output, theme.destructive, theme.secondary);
         self.paint_scrollbar(area, buf, theme);
     }
 
@@ -442,11 +534,17 @@ impl Console {
         }
     }
 
-    fn paint_placeholder(area: Rect, buf: &mut Buffer, output: Color, background: Color) {
+    fn paint_placeholder(
+        area: Rect,
+        buf: &mut Buffer,
+        output: Color,
+        background: Color,
+        text: &str,
+    ) {
         buf.set_stringn(
             area.x,
             area.y,
-            "waiting for output...",
+            text,
             area.width as usize,
             Style::default()
                 .fg(output)
@@ -455,7 +553,14 @@ impl Console {
         );
     }
 
-    fn paint_lines(&self, area: Rect, buf: &mut Buffer, output: Color, background: Color) {
+    fn paint_lines(
+        &self,
+        area: Rect,
+        buf: &mut Buffer,
+        output: Color,
+        error: Color,
+        background: Color,
+    ) {
         let width = usize::from(area.width);
         let wrapped = self.wrapped_lines(width);
         let visible_rows = self.visible_rows(width);
@@ -463,13 +568,15 @@ impl Console {
         let start = wrapped
             .len()
             .saturating_sub(self.state.offset + visible_rows);
-        for (row, text) in wrapped.iter().skip(start).take(shown).enumerate() {
+        for (row, (text, is_error)) in wrapped.iter().skip(start).take(shown).enumerate() {
             buf.set_stringn(
                 area.x,
                 area.y + row as u16,
                 text,
                 text.len(),
-                Style::default().fg(output).bg(background),
+                Style::default()
+                    .fg(if *is_error { error } else { output })
+                    .bg(background),
             );
         }
     }

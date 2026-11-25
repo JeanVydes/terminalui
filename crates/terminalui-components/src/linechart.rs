@@ -58,7 +58,7 @@ pub struct LineChart {
     pub tuning: StyleTuning,
     /// Caption row, composed by the host.
     children: Vec<Node>,
-    series: Vec<f64>,
+    series: Vec<Option<f64>>,
     domain: Option<(f64, f64)>,
 }
 
@@ -120,6 +120,18 @@ impl LineChart {
         if series.len() > MAX_HISTORY {
             series.drain(..series.len() - MAX_HISTORY);
         }
+        self.series = series.into_iter().map(Some).collect();
+    }
+
+    /// Replace the samples while preserving intentional gaps in the timeline.
+    pub fn set_gapped_series(&mut self, series: Vec<Option<f64>>) {
+        let mut series: Vec<_> = series
+            .into_iter()
+            .map(|value| value.filter(|value| value.is_finite()))
+            .collect();
+        if series.len() > MAX_HISTORY {
+            series.drain(..series.len() - MAX_HISTORY);
+        }
         self.series = series;
     }
 
@@ -128,7 +140,7 @@ impl LineChart {
         if !value.is_finite() {
             return;
         }
-        self.series.push(value);
+        self.series.push(Some(value));
         if self.series.len() > MAX_HISTORY {
             self.series.remove(0);
         }
@@ -141,17 +153,23 @@ impl LineChart {
 
     /// `true` when there is nothing to draw.
     pub fn is_empty(&self) -> bool {
-        self.series.is_empty()
+        self.series.iter().all(Option::is_none)
     }
 
     fn domain(&self) -> (f64, f64) {
         if let Some(domain) = self.domain {
             return domain;
         }
-        let low = self.series.iter().copied().fold(f64::INFINITY, f64::min);
+        let low = self
+            .series
+            .iter()
+            .flatten()
+            .copied()
+            .fold(f64::INFINITY, f64::min);
         let high = self
             .series
             .iter()
+            .flatten()
             .copied()
             .fold(f64::NEG_INFINITY, f64::max);
         if high == low {
@@ -208,7 +226,7 @@ impl View for LineChart {
             let caption = Rect::new(area.x, area.y, area.width, 1);
             row(&mut self.children, caption, Align::Left, 2, buf, cx, theme);
         }
-        if area.width < 12 || area.height < 5 || self.series.is_empty() {
+        if area.width < 12 || area.height < 5 || self.series.iter().all(Option::is_none) {
             return;
         }
         let line_color = self.style.line.unwrap_or(theme.accent);
@@ -275,9 +293,14 @@ impl View for LineChart {
                 .max(start + 1)
                 .min(sample_count);
             let slice = &self.series[start..end];
-            let minimum = to_y(slice.iter().copied().fold(f64::INFINITY, f64::min));
-            let maximum = to_y(slice.iter().copied().fold(f64::NEG_INFINITY, f64::max));
-            let y = to_y(*slice.last().unwrap_or(&low));
+            let values: Vec<_> = slice.iter().flatten().copied().collect();
+            let Some(last) = values.last().copied() else {
+                previous_y = None;
+                continue;
+            };
+            let minimum = to_y(values.iter().copied().fold(f64::INFINITY, f64::min));
+            let maximum = to_y(values.iter().copied().fold(f64::NEG_INFINITY, f64::max));
+            let y = to_y(last);
             if let Some(previous_y) = previous_y {
                 connect(buf, area.x + column, previous_y, y, line_color);
             }
@@ -285,7 +308,7 @@ impl View for LineChart {
                 buf.set_string(area.x + column, row, "│", Style::default().fg(line_color));
             }
             let glyph = if shaded {
-                let intensity = ((slice[slice.len() - 1] - low) / range).clamp(0.0, 1.0) as f32;
+                let intensity = ((last - low) / range).clamp(0.0, 1.0) as f32;
                 self.presentation.shade(intensity, &self.tuning)
             } else {
                 "●"
@@ -295,7 +318,9 @@ impl View for LineChart {
         }
 
         // Latest value tag on the right axis.
-        let latest = *self.series.last().unwrap_or(&low);
+        let Some(latest) = self.series.iter().rev().flatten().next().copied() else {
+            return;
+        };
         let y = to_y(latest).clamp(plot_top, plot_bottom);
         let tag = format!(" {} ", format_value(latest));
         buf.set_stringn(

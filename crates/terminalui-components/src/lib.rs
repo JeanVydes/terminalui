@@ -69,6 +69,7 @@ pub mod menu;
 pub mod overlay;
 pub mod pagination;
 pub mod panel;
+pub mod piechart;
 pub mod popover;
 pub mod presentation;
 pub mod progress;

@@ -71,6 +71,60 @@ fn console_reports_exit_status_in_the_header() {
 }
 
 #[test]
+fn exited_console_without_output_says_so() {
+    let mut console = Console::new("true");
+    console.set_exit(Some(0));
+    let mut tree = single(node("shell", console));
+    let out = paint(&mut tree, Rect::new(0, 0, 40, 4));
+    assert!(out.contains("no output"), "got: {out}");
+    assert!(!out.contains("waiting for output"), "got: {out}");
+}
+
+#[test]
+fn standard_error_lines_use_the_theme_error_color() {
+    let mut console = Console::new("cargo check");
+    console.push_line("stdout line");
+    console.push_error_line("stderr line");
+    assert!(!console.line_is_error(0));
+    assert!(console.line_is_error(1));
+
+    let area = Rect::new(0, 0, 40, 5);
+    let mut tree = single(node("shell", console));
+    let mut buffer = Buffer::empty(area);
+    let theme = Theme::default();
+    tree.render(area, &mut buffer, &theme);
+    let has_error_colored_cell = (0..area.height).any(|y| {
+        (0..area.width).any(|x| {
+            let cell = &buffer[(x, y)];
+            cell.symbol() == "s" && cell.fg == theme.destructive
+        })
+    });
+    assert!(has_error_colored_cell);
+}
+
+#[test]
+fn streaming_chunks_join_partial_lines() {
+    let mut console = Console::new("command");
+    console.push_chunk("first ", false);
+    console.push_chunk("line\nsecond", false);
+    console.push_chunk(" line\n", false);
+
+    assert_eq!(console.lines(), ["first line", "second line"]);
+}
+
+#[test]
+fn streaming_chunks_keep_standard_error_style() {
+    let mut console = Console::new("command");
+    console.push_chunk("out\n", false);
+    console.push_chunk("err", true);
+    console.push_chunk("or\n", true);
+
+    assert_eq!(console.lines(), ["out", "error"]);
+    assert!(!console.line_is_error(0));
+    assert!(console.line_is_error(1));
+}
+
+#[test]
 fn console_scrolls_output_with_overflow() {
     let lines: Vec<String> = (0..12).map(|n| format!("row {n}")).collect();
     let console = Console::new("yes").with_max_visible(4).set_lines(lines);
