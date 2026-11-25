@@ -24,8 +24,8 @@ pub enum DotSize {
     Large,
 }
 
-/// Knob set for the shading ramps. `density` and `dotsize` only affect
-/// [`RenderStyle::Halftone`] and [`RenderStyle::Squares`]; `contrast` remaps
+/// Knob set for the shading ramps. `density` and `dotsize` affect
+/// [`RenderStyle::Halftone`], [`RenderStyle::Braille`] and [`RenderStyle::Squares`]; `contrast` remaps
 /// every shading family except [`RenderStyle::Native`].
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct StyleTuning {
@@ -77,6 +77,8 @@ pub enum RenderStyle {
     Native,
     /// Sparse/dense dots.
     Halftone,
+    /// Braille subpixels, with up to eight dots per terminal cell.
+    Braille,
     /// Ramp of punctuation.
     Ascii,
     /// `%$@` ramp.
@@ -110,6 +112,7 @@ impl RenderStyle {
             RenderStyle::DenseAscii => (".", ":"),
             RenderStyle::Letters => ("-", "l"),
             RenderStyle::Halftone => ("·", "·"),
+            RenderStyle::Braille => ("⠒", "⠂"),
             RenderStyle::Dither => (":", ":"),
         }
     }
@@ -139,6 +142,7 @@ const FRAMES_BLOCKS: &[&str] = &[
 ];
 const FRAMES_HASH: &[&str] = &["-", "\\", "|", "/"];
 const FRAMES_DOTS: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const FRAMES_BRAILLE: &[&str] = &["⠁", "⠃", "⠇", "⠏", "⠟", "⠿", "⣿", "⠿", "⠟", "⠏", "⠇", "⠃"];
 const FRAMES_SQUARES: &[&str] = &["◐", "◓", "◑", "◒"];
 const FRAMES_NUMBERS: &[&str] = &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const FRAMES_BINARY: &[&str] = &["0", "1"];
@@ -181,6 +185,7 @@ impl RenderStyle {
         let (track, thumb, cap_top, cap_bottom) = match self {
             RenderStyle::Native | RenderStyle::Blocks => ("░", "█", "▄", "▀"),
             RenderStyle::Halftone => ("·", "●", "◖", "◗"),
+            RenderStyle::Braille => ("⠂", "⣿", "⠿", "⠿"),
             RenderStyle::Ascii => ("-", "#", "=", "="),
             RenderStyle::DenseAscii => (".", "@", "@", "@"),
             RenderStyle::Numbers => ("0", "8", "8", "8"),
@@ -203,6 +208,7 @@ impl RenderStyle {
         let (checked, unchecked) = match self {
             RenderStyle::Native | RenderStyle::Ascii | RenderStyle::Binary => ("[x]", "[ ]"),
             RenderStyle::Halftone => ("(●)", "( )"),
+            RenderStyle::Braille => ("[⣿]", "[⠂]"),
             RenderStyle::DenseAscii => ("[@]", "[ ]"),
             RenderStyle::Numbers => ("[8]", "[ ]"),
             RenderStyle::Letters => ("[M]", "[ ]"),
@@ -227,6 +233,13 @@ impl RenderStyle {
                 doji: "•",
                 body: "●",
                 live: "·",
+            },
+            RenderStyle::Braille => Presentation {
+                grid: "⠂",
+                wick: "⠒",
+                doji: "⠒",
+                body: "⣿",
+                live: "⠶",
             },
             RenderStyle::Ascii => Presentation {
                 grid: ".",
@@ -300,6 +313,7 @@ impl RenderStyle {
     pub fn frames(self) -> &'static [&'static str] {
         match self {
             RenderStyle::Native | RenderStyle::Halftone => FRAMES_DOTS,
+            RenderStyle::Braille => FRAMES_BRAILLE,
             RenderStyle::Lines | RenderStyle::DenseAscii | RenderStyle::Ascii => FRAMES_HASH,
             RenderStyle::Numbers => FRAMES_NUMBERS,
             RenderStyle::Binary => FRAMES_BINARY,
@@ -315,6 +329,7 @@ impl RenderStyle {
         match self {
             RenderStyle::Native | RenderStyle::Blocks => "█",
             RenderStyle::Halftone | RenderStyle::Dither => "▓",
+            RenderStyle::Braille => "⣿",
             RenderStyle::Lines => "━",
             RenderStyle::DenseAscii | RenderStyle::Ascii => "#",
             RenderStyle::Numbers => "8",
@@ -329,6 +344,7 @@ impl RenderStyle {
         match self {
             RenderStyle::Native => "•",
             RenderStyle::Halftone => "●",
+            RenderStyle::Braille => "⣿",
             RenderStyle::Ascii => "*",
             RenderStyle::DenseAscii => "$",
             RenderStyle::Numbers => "9",
@@ -349,6 +365,7 @@ impl RenderStyle {
             | RenderStyle::Lines
             | RenderStyle::Squares => "┊",
             RenderStyle::Halftone
+            | RenderStyle::Braille
             | RenderStyle::Numbers
             | RenderStyle::Binary
             | RenderStyle::Letters => "·",
@@ -362,6 +379,7 @@ impl RenderStyle {
         match self {
             RenderStyle::Native | RenderStyle::Blocks => "░",
             RenderStyle::Halftone | RenderStyle::Dither => "░",
+            RenderStyle::Braille => "⠂",
             RenderStyle::Lines => "─",
             RenderStyle::DenseAscii | RenderStyle::Ascii => ".",
             RenderStyle::Numbers => "0",
@@ -406,6 +424,7 @@ impl RenderStyle {
                 let index = (u * (levels - 1) as f32).round() as usize;
                 pick(index.min(levels - 1))
             }
+            RenderStyle::Braille => pick_ramp(u, &[" ", "⠁", "⠃", "⠇", "⠏", "⠟", "⠿", "⣿"]),
             RenderStyle::Squares => {
                 let ramp: &[&'static str] = match tuning.dotsize {
                     DotSize::Small => &[" ", "·", "▪"],

@@ -257,7 +257,7 @@ impl PieChart {
         if area.width == 0 || area.height == 0 {
             return;
         }
-        if self.presentation == RenderStyle::Halftone {
+        if self.presentation == RenderStyle::Braille {
             self.paint_braille_circle(area, buf);
             return;
         }
@@ -380,7 +380,7 @@ impl PieChart {
         } else {
             ((1.0 - radial) / 0.22).clamp(0.0, 1.0)
         };
-        (RenderStyle::Halftone.shade(intensity, &self.tuning) != " ")
+        (RenderStyle::Braille.shade(intensity, &self.tuning) != " ")
             .then(|| self.color_at(angle))
             .flatten()
     }
