@@ -393,8 +393,8 @@ impl RenderStyle {
 impl RenderStyle {
     /// Map a per-cell intensity (0..=1) onto the ink ramp of this family.
     /// `Native` picks between `empty` and `filled`; every other family maps
-    /// onto a dot/glyph ramp. `density` and `dotsize` apply to Halftone and
-    /// Squares; `contrast` applies to every shading family except `Native`.
+    /// onto a dot/glyph ramp. `density` and `dotsize` apply to Halftone,
+    /// Braille and Squares; `contrast` applies to every family except `Native`.
     pub fn shade(self, intensity: f32, tuning: &StyleTuning) -> &'static str {
         let tuning = tuning.clamped();
         let u = intensity.clamp(0.0, 1.0).powf(1.0 / tuning.contrast);
