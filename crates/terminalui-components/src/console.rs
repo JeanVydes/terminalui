@@ -161,6 +161,7 @@ pub struct Console {
     expanded: bool,
     output_visible: bool,
     pending_line: bool,
+    header_preview: bool,
     #[serde(skip)]
     content_width: usize,
 }
@@ -181,6 +182,7 @@ impl Console {
             expanded: false,
             output_visible: true,
             pending_line: false,
+            header_preview: false,
             content_width: 0,
         }
     }
@@ -221,6 +223,14 @@ impl Console {
     /// Label the output panel without repeating the shell command.
     pub fn with_header_label(mut self, label: impl Into<String>) -> Self {
         self.header_label = Some(label.into());
+        self.header_preview = false;
+        self
+    }
+
+    /// Show the latest non-empty output line in the header, clipped to fit.
+    pub fn with_output_preview(mut self) -> Self {
+        self.header_label = None;
+        self.header_preview = true;
         self
     }
 
@@ -486,11 +496,8 @@ impl Console {
     fn paint_header(&self, inner: Rect, buf: &mut Buffer, theme: &Theme, background: Color) {
         let slots = self.header_slots(inner, theme);
         buf.set_style(Rect { height: 1, ..inner }, Style::default().bg(background));
-        let prefix = if self.header_label.is_some() {
-            ""
-        } else {
-            "$ "
-        };
+        let has_header_label = self.header_label.is_some() || self.header_preview;
+        let prefix = if has_header_label { "" } else { "$ " };
         Self::paint_slot(
             buf,
             inner.x,
@@ -541,15 +548,29 @@ impl Console {
         background: Color,
         slots: &HeaderSlots,
     ) {
-        let prefix_width = if self.header_label.is_some() { 0 } else { 2 };
+        let has_header_label = self.header_label.is_some() || self.header_preview;
+        let prefix_width = if has_header_label { 0 } else { 2 };
         let command_width = slots
             .status_x
             .saturating_sub(inner.x + prefix_width)
             .saturating_sub(1);
-        let command_text = clip_cells(
-            self.header_label.as_deref().unwrap_or(&self.command),
-            usize::from(command_width),
-        );
+        let header_text = if self.header_preview {
+            self.lines
+                .iter()
+                .rev()
+                .find(|line| !line.trim().is_empty())
+                .map(String::as_str)
+                .unwrap_or_else(|| {
+                    if self.is_running() {
+                        "waiting for output..."
+                    } else {
+                        "no output"
+                    }
+                })
+        } else {
+            self.header_label.as_deref().unwrap_or(&self.command)
+        };
+        let command_text = clip_cells(header_text, usize::from(command_width));
         Self::paint_slot(
             buf,
             inner.x + prefix_width,
