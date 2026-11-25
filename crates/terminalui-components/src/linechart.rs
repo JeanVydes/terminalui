@@ -13,7 +13,7 @@ use terminalui_core::outline::quoted;
 use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
 
-use super::axis::{format_value, nice_max, ticks};
+use super::axis::{format_value, nice_domain};
 use super::layout::{row, Align};
 use super::presentation::{RenderStyle, StyleTuning};
 
@@ -113,11 +113,14 @@ impl LineChart {
 
     /// Replace the series entirely; non-finite values dropped, truncated to `MAX_HISTORY`.
     pub fn set_series(&mut self, series: Vec<f64>) {
-        self.series = series
+        let mut series: Vec<_> = series
             .into_iter()
             .filter(|value| value.is_finite())
-            .take(MAX_HISTORY)
             .collect();
+        if series.len() > MAX_HISTORY {
+            series.drain(..series.len() - MAX_HISTORY);
+        }
+        self.series = series;
     }
 
     /// Append one value, dropping the oldest when the history is full.
@@ -145,12 +148,17 @@ impl LineChart {
         if let Some(domain) = self.domain {
             return domain;
         }
+        let low = self.series.iter().copied().fold(f64::INFINITY, f64::min);
         let high = self
             .series
             .iter()
             .copied()
-            .fold(0.0f64, |peak, value| peak.max(value));
-        (0.0, nice_max(high, AXIS_DIVISIONS))
+            .fold(f64::NEG_INFINITY, f64::max);
+        if high == low {
+            let padding = high.abs().mul_add(0.1, 0.1);
+            return (low - padding, high + padding);
+        }
+        nice_domain(low, high, AXIS_DIVISIONS)
     }
 }
 
@@ -224,20 +232,24 @@ impl View for LineChart {
             plot_top + ((1.0 - normalized) * (plot_height - 1.0)).round() as u16
         };
 
-        // Gridlines follow the ten divisions of the rounded axis.
-        let axis = ticks(high, AXIS_DIVISIONS);
+        // Gridline count follows the available plot height.
+        let divisions = AXIS_DIVISIONS
+            .min(plot_bottom.saturating_sub(plot_top) as usize)
+            .max(1);
+        let axis = (0..=divisions)
+            .map(|step| low + (high - low) * step as f64 / divisions as f64)
+            .collect::<Vec<_>>();
         for value in &axis {
             let y = to_y(*value).clamp(plot_top, plot_bottom);
             for x in (area.x..area.x + plot_width).step_by(3) {
                 buf.set_string(x, y, "·", Style::default().fg(grid_color));
             }
         }
-        // Ten fixed labels in one column: the highest value on top, zero as
-        // the baseline at the bottom.
+        // Highest value stays at the top, lowest at the bottom.
         let span = plot_bottom.saturating_sub(plot_top);
-        for index in 0..=AXIS_DIVISIONS {
-            let value = axis[AXIS_DIVISIONS - index];
-            let y = plot_top + (index as u16 * span / AXIS_DIVISIONS as u16);
+        for index in 0..=divisions {
+            let value = axis[divisions - index];
+            let y = plot_top + (index as u16 * span / divisions as u16);
             buf.set_stringn(
                 axis_x + 2,
                 y,
@@ -255,17 +267,25 @@ impl View for LineChart {
 
         // Sampled polyline: one point per column.
         let shaded = self.presentation != RenderStyle::Native;
-        let last = self.series.len() - 1;
-        let span = (plot_width - 1).max(1) as f64;
+        let sample_count = self.series.len();
         let mut previous_y: Option<u16> = None;
         for column in 0..plot_width {
-            let index = (column as f64 * last as f64 / span).round() as usize;
-            let y = to_y(self.series[index]);
+            let start = column as usize * sample_count / plot_width as usize;
+            let end = ((column as usize + 1) * sample_count / plot_width as usize)
+                .max(start + 1)
+                .min(sample_count);
+            let slice = &self.series[start..end];
+            let minimum = to_y(slice.iter().copied().fold(f64::INFINITY, f64::min));
+            let maximum = to_y(slice.iter().copied().fold(f64::NEG_INFINITY, f64::max));
+            let y = to_y(*slice.last().unwrap_or(&low));
             if let Some(previous_y) = previous_y {
                 connect(buf, area.x + column, previous_y, y, line_color);
             }
+            for row in minimum.min(maximum)..=minimum.max(maximum) {
+                buf.set_string(area.x + column, row, "│", Style::default().fg(line_color));
+            }
             let glyph = if shaded {
-                let intensity = ((self.series[index] - low) / range).clamp(0.0, 1.0) as f32;
+                let intensity = ((slice[slice.len() - 1] - low) / range).clamp(0.0, 1.0) as f32;
                 self.presentation.shade(intensity, &self.tuning)
             } else {
                 "●"

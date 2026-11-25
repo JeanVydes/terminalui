@@ -74,6 +74,23 @@ pub struct Candle {
     pub volume: f64,
 }
 
+impl Candle {
+    fn normalized(mut self) -> Option<Self> {
+        if ![self.open, self.high, self.low, self.close, self.volume]
+            .into_iter()
+            .all(f64::is_finite)
+        {
+            return None;
+        }
+        let bounds_high = self.open.max(self.close);
+        let bounds_low = self.open.min(self.close);
+        self.high = self.high.max(bounds_high).max(self.low);
+        self.low = self.low.min(bounds_low).min(self.high);
+        self.volume = self.volume.max(0.0);
+        Some(self)
+    }
+}
+
 /// Per-instance overrides for a candle chart. Defaults match the theme.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct CandleChartStyle {
@@ -183,13 +200,20 @@ impl CandleChart {
 
     /// Replace the whole series. Anchors the view to the live edge.
     pub fn set_series(&mut self, series: Vec<Candle>) {
-        self.series = series.into_iter().rev().take(MAX_HISTORY).rev().collect();
+        let mut series: Vec<_> = series.into_iter().filter_map(Candle::normalized).collect();
+        if series.len() > MAX_HISTORY {
+            series.drain(..series.len() - MAX_HISTORY);
+        }
+        self.series = series;
         self.state.scroll_back = 0;
     }
 
     /// Replaces the forming (last) candle in place. No-op on an empty series
     /// (equivalent to pushing it).
     pub fn update_candle(&mut self, candle: Candle) {
+        let Some(candle) = candle.normalized() else {
+            return;
+        };
         if let Some(last) = self.series.last_mut() {
             *last = candle;
         } else {
@@ -200,6 +224,9 @@ impl CandleChart {
     /// Appends a new candle. When the user is scrolled back the same candles
     /// stay on screen; when following the live edge the window tracks forward.
     pub fn push_candle(&mut self, candle: Candle) {
+        let Some(candle) = candle.normalized() else {
+            return;
+        };
         self.series.push(candle);
         if self.series.len() > MAX_HISTORY {
             self.series.remove(0);
@@ -340,16 +367,30 @@ impl View for CandleChart {
         let start = end.saturating_sub(visible_count);
         let series_index = |visible: usize| -> usize { start + visible };
 
-        // Zero-based vertical range ending at a rounded bound above the
-        // visible peak, so the axis reads in round steps instead of tracking
-        // the data's own minimum and maximum.
+        // Keep ordinary price axes anchored at zero and fit signed data around
+        // rounded bounds so negative values remain visible.
+        let floor = self.series[start..end]
+            .iter()
+            .map(|candle| candle.low.min(candle.open).min(candle.close))
+            .fold(f64::INFINITY, f64::min);
         let peak = self.series[start..end]
             .iter()
             .map(|candle| candle.high.max(candle.close).max(candle.open))
             .fold(0.0f64, |peak, value| peak.max(value));
-        let high = nice_max(peak, AXIS_DIVISIONS);
-        let low = 0.0f64;
-        let range = (high * self.state.y_zoom).max(0.001);
+        let (mut low, mut high) = if floor < 0.0 {
+            super::axis::nice_domain(floor, peak, AXIS_DIVISIONS)
+        } else {
+            (0.0, nice_max(peak, AXIS_DIVISIONS))
+        };
+        if low < 0.0 {
+            let center = (low + high) / 2.0;
+            let range = ((high - low) * self.state.y_zoom).max(0.001);
+            low = center - range / 2.0;
+            high = center + range / 2.0;
+        } else {
+            high = (high * self.state.y_zoom).max(0.001);
+        }
+        let range = (high - low).max(0.001);
 
         let caption_offset = if self.children.is_empty() { 0 } else { 1 };
         let plot_top = area.y + caption_offset + 1;
@@ -361,11 +402,10 @@ impl View for CandleChart {
         }
         let plot_height = (plot_bottom - plot_top + 1) as f64;
         let to_y = |value: f64| -> u16 {
-            let normalized = (value - low) / range;
-            plot_top + ((1.0 - normalized) * plot_height).round() as u16
+            let normalized = ((value - low) / range).clamp(0.0, 1.0);
+            plot_top + ((1.0 - normalized) * (plot_height - 1.0).max(0.0)).round() as u16
         };
 
-        let plot_width = area.width.saturating_sub(11);
         let axis_x = area.x + plot_width + 1;
         let inner_width = plot_width.saturating_sub(1);
 
@@ -377,16 +417,23 @@ impl View for CandleChart {
         let last = visible_slice[visible_slice.len() - 1];
         let first_open = visible_slice[0].open;
         let reference_close = last.close;
-        let change = (reference_close - first_open) / first_open * 100.0;
-        let change_color = if change >= 0.0 { up } else { down };
+        let change = (first_open != 0.0)
+            .then(|| (reference_close - first_open) / first_open * 100.0)
+            .filter(|change| change.is_finite());
+        let change_color = if change.is_some_and(|change| change >= 0.0) {
+            up
+        } else {
+            down
+        };
         let stats_x = area.x + caption_width(&self.children);
         let stats_y = area.y;
         let header = format!(
-            "O {} H {} L {} C {} {change:+.2}%",
+            "O {} H {} L {} C {} {}",
             format_value(last.open),
             format_value(last.high),
             format_value(last.low),
             format_value(reference_close),
+            change.map_or_else(|| "n/a".to_owned(), |change| format!("{change:+.2}%")),
         );
         if caption_height > 0 && area.width >= 44 {
             buf.set_stringn(
@@ -400,16 +447,18 @@ impl View for CandleChart {
             buf.set_stringn(
                 stats_x,
                 stats_y,
-                format!("{change:+.2}%"),
+                change.map_or_else(|| "n/a".to_owned(), |change| format!("{change:+.2}%")),
                 8,
                 Style::default().fg(change_color),
             );
         }
 
-        // Gridlines follow the ten divisions; ten fixed labels show the same
-        // rounded values, highest on top and zero as the bottom baseline.
-        let axis: Vec<f64> = (0..=AXIS_DIVISIONS)
-            .map(|step| low + (step as f64 / AXIS_DIVISIONS as f64) * range)
+        // Gridline count follows the plot height and shares the labeled ticks.
+        let divisions = AXIS_DIVISIONS
+            .min(plot_bottom.saturating_sub(plot_top) as usize)
+            .max(1);
+        let axis: Vec<f64> = (0..=divisions)
+            .map(|step| low + (step as f64 / divisions as f64) * range)
             .collect();
         for value in &axis {
             let y = to_y(*value).clamp(plot_top, plot_bottom);
@@ -418,9 +467,9 @@ impl View for CandleChart {
             }
         }
         let span = plot_bottom.saturating_sub(plot_top);
-        for index in 0..=AXIS_DIVISIONS {
-            let value = axis[AXIS_DIVISIONS - index];
-            let y = plot_top + (index as u16 * span / AXIS_DIVISIONS as u16);
+        for index in 0..=divisions {
+            let value = axis[divisions - index];
+            let y = plot_top + (index as u16 * span / divisions as u16);
             buf.set_stringn(
                 axis_x + 2,
                 y,

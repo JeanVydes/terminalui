@@ -1,8 +1,6 @@
 //! Shared numeric axis helpers for charts.
 //!
-//! The domain starts at zero and ends at a rounded bound above the data, so a
-//! series peaking at 859k reads against a 0..1m axis in 100k steps rather than
-//! against its own min and max.
+//! Numeric helpers shared by chart axes.
 
 /// Choose a rounded upper bound for a zero-based axis with `divisions` steps.
 pub fn nice_max(max: f64, divisions: usize) -> f64 {
@@ -20,7 +18,24 @@ pub fn nice_max(max: f64, divisions: usize) -> f64 {
         .into_iter()
         .find(|candidate| *candidate >= normalized)
         .unwrap_or(10.0);
-    (step * magnitude * divisions).max(divisions)
+    (step * magnitude * divisions).max(f64::MIN_POSITIVE)
+}
+
+/// Choose rounded bounds around a data range, including negative values.
+pub fn nice_domain(low: f64, high: f64, divisions: usize) -> (f64, f64) {
+    let divisions = divisions.max(1) as f64;
+    if !low.is_finite() || !high.is_finite() || high <= low {
+        return (0.0, divisions);
+    }
+    let rough = (high - low) / divisions;
+    let magnitude = 10f64.powf(rough.log10().floor());
+    let normalized = rough / magnitude;
+    let step = [1.0, 2.0, 3.0, 5.0, 10.0]
+        .into_iter()
+        .find(|candidate| *candidate >= normalized)
+        .unwrap_or(10.0)
+        * magnitude;
+    ((low / step).floor() * step, (high / step).ceil() * step)
 }
 
 /// A short, human-readable axis label: `1m`, `250k`, `12`, `0.5`.

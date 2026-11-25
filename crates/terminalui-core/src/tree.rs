@@ -1,5 +1,6 @@
 //! The root of a rendered view tree.
 
+use std::collections::HashMap;
 use std::time::Duration;
 
 use ratatui::buffer::Buffer;
@@ -16,7 +17,14 @@ use crate::view::View;
 /// Rendered view tree. Owns the root view and the tracked focus slot.
 pub struct Tree {
     root: Node,
-    focus: Option<usize>,
+    focus: Option<FocusTarget>,
+}
+
+/// Identity of a focusable node. Occurrence keeps duplicate host ids distinct.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FocusTarget {
+    id: String,
+    occurrence: usize,
 }
 
 impl Tree {
@@ -27,7 +35,7 @@ impl Tree {
 
     /// Render the tree into `buf` inside `area`.
     pub fn render(&mut self, area: Rect, buf: &mut Buffer, theme: &Theme) {
-        let mut cx = Context::new(self.focus);
+        let mut cx = Context::new(self.focus_index());
         self.root.view.render(area, buf, &mut cx, theme);
     }
 
@@ -48,13 +56,13 @@ impl Tree {
                 _ => {}
             }
         }
-        let mut cx = Context::new(self.focus);
+        let mut cx = Context::new(self.focus_index());
         dispatch(&mut self.root, event, &mut cx)
     }
 
     /// Advance time-based state on every view.
     pub fn tick(&mut self, delta: Duration) {
-        let mut cx = Context::new(self.focus);
+        let mut cx = Context::new(self.focus_index());
         self.root.view.tick(delta, &mut cx);
     }
 
@@ -99,14 +107,14 @@ impl Tree {
     /// Currently focused view, by id.
     pub fn focused_id(&self) -> Option<&str> {
         self.focus
-            .and_then(|index| find_focusable_id(&self.root, index, &mut 0usize))
+            .as_ref()
+            .and_then(|target| focus_index_for(&self.root, target).map(|_| target.id.as_str()))
     }
 
     /// Focus the view with this id. Returns true when it exists and is focusable.
     pub fn focus(&mut self, id: &str) -> bool {
-        let mut counter = 0usize;
-        if let Some(index) = find_focusable_index(&self.root, id, &mut counter) {
-            self.focus = Some(index);
+        if let Some(target) = first_focus_target(&self.root, id) {
+            self.focus = Some(target);
             true
         } else {
             false
@@ -119,8 +127,11 @@ impl Tree {
         if count == 0 {
             return false;
         }
-        let next = self.focus.map(|index| (index + 1) % count).unwrap_or(0);
-        self.focus = Some(next);
+        let next = self
+            .focus_index()
+            .map(|index| (index + 1) % count)
+            .unwrap_or(0);
+        self.focus = focus_target_at(&self.root, next);
         true
     }
 
@@ -131,23 +142,25 @@ impl Tree {
             return false;
         }
         let previous = self
-            .focus
+            .focus_index()
             .map(|index| if index == 0 { count - 1 } else { index - 1 })
             .unwrap_or(count - 1);
-        self.focus = Some(previous);
-        true
+        self.focus = focus_target_at(&self.root, previous);
+        self.focus.is_some()
     }
 
     /// Activate a view programmatically by id. Returns true when it produced an action.
     pub fn press(&mut self, id: &str) -> bool {
-        let mut counter = 0usize;
-        let Some(index) = find_focusable_index(&self.root, id, &mut counter) else {
+        let Some(target) = first_focus_target(&self.root, id) else {
             return false;
         };
-        self.focus = Some(index);
+        self.focus = Some(target.clone());
+        let Some(index) = focus_index_for(&self.root, &target) else {
+            return false;
+        };
         let mut rank = 0usize;
         match find_focusable_mut_at(&mut self.root, index, &mut rank) {
-            Some(node) => node.view.activate(&Context::new(self.focus)),
+            Some(node) => node.view.activate(&Context::new(Some(index))),
             None => false,
         }
     }
@@ -190,6 +203,12 @@ impl Tree {
             focus: self.focused_id(),
             root: &self.root,
         }
+    }
+
+    fn focus_index(&self) -> Option<usize> {
+        self.focus
+            .as_ref()
+            .and_then(|target| focus_index_for(&self.root, target))
     }
 }
 
@@ -264,37 +283,89 @@ fn walk_mut(node: &mut Node, f: &mut dyn FnMut(&mut Node)) {
     }
 }
 
-fn find_focusable_index(node: &Node, id: &str, counter: &mut usize) -> Option<usize> {
+fn first_focus_target(node: &Node, id: &str) -> Option<FocusTarget> {
+    find_focusable_target(node, id)
+}
+
+fn find_focusable_target(node: &Node, id: &str) -> Option<FocusTarget> {
     if node.hidden {
         return None;
     }
-    if node.view.focusable() {
-        if node.id() == id {
-            return Some(*counter);
-        }
-        *counter += 1;
+    if node.view.focusable() && node.id() == id {
+        return Some(FocusTarget {
+            id: id.to_owned(),
+            occurrence: 0,
+        });
     }
     for child in node.view.children() {
-        if let Some(index) = find_focusable_index(child, id, counter) {
-            return Some(index);
+        if let Some(target) = find_focusable_target(child, id) {
+            return Some(target);
         }
     }
     None
 }
 
-fn find_focusable_id<'a>(node: &'a Node, index: usize, counter: &mut usize) -> Option<&'a str> {
+fn focus_index_for(node: &Node, target: &FocusTarget) -> Option<usize> {
+    let mut counter = 0;
+    let mut occurrence = 0;
+    find_focus_index(node, target, &mut counter, &mut occurrence)
+}
+
+fn find_focus_index(
+    node: &Node,
+    target: &FocusTarget,
+    counter: &mut usize,
+    occurrence: &mut usize,
+) -> Option<usize> {
+    if node.hidden {
+        return None;
+    }
+    if node.view.focusable() {
+        if node.id == target.id {
+            if *occurrence == target.occurrence {
+                return Some(*counter);
+            }
+            *occurrence += 1;
+        }
+        *counter += 1;
+    }
+    for child in node.view.children() {
+        if let Some(found) = find_focus_index(child, target, counter, occurrence) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn focus_target_at(node: &Node, index: usize) -> Option<FocusTarget> {
+    let mut counter = 0;
+    let mut occurrences = HashMap::<String, usize>::new();
+    target_at(node, index, &mut counter, &mut occurrences)
+}
+
+fn target_at(
+    node: &Node,
+    index: usize,
+    counter: &mut usize,
+    occurrences: &mut HashMap<String, usize>,
+) -> Option<FocusTarget> {
     if node.hidden {
         return None;
     }
     if node.view.focusable() {
         if *counter == index {
-            return Some(&node.id);
+            let occurrence = occurrences.entry(node.id.clone()).or_default();
+            return Some(FocusTarget {
+                id: node.id.clone(),
+                occurrence: *occurrence,
+            });
         }
         *counter += 1;
+        *occurrences.entry(node.id.clone()).or_default() += 1;
     }
     for child in node.view.children() {
-        if let Some(found) = find_focusable_id(child, index, counter) {
-            return Some(found);
+        if let Some(target) = target_at(child, index, counter, occurrences) {
+            return Some(target);
         }
     }
     None

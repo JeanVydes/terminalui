@@ -24,6 +24,16 @@ impl Node {
     pub fn id(&self) -> &str {
         &self.id
     }
+
+    /// Whether this node is excluded from rendering, focus and event walks.
+    pub fn is_hidden(&self) -> bool {
+        self.hidden
+    }
+
+    /// Set visibility without unmounting the view or discarding its state.
+    pub fn set_hidden(&mut self, hidden: bool) {
+        self.hidden = hidden;
+    }
 }
 
 impl Serialize for Node {

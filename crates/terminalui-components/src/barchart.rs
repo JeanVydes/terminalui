@@ -13,6 +13,7 @@ use terminalui_core::outline::quoted;
 use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
 
+use super::axis::nice_max;
 use super::layout::{row, Align};
 use super::presentation::{RenderStyle, StyleTuning};
 
@@ -184,7 +185,10 @@ impl View for BarChart {
         let plot_height = (plot_bottom - plot_top + 1) as f64;
         let plot_width = area.width.saturating_sub(AXIS_WIDTH + 1).max(1);
         let axis_x = area.x + plot_width + 1;
-        let max = self.values.iter().copied().fold(0.0_f64, f64::max).max(1.0);
+        let visible_count = self.values.len().min(plot_width as usize);
+        let first_visible = self.values.len().saturating_sub(visible_count);
+        let values = &self.values[first_visible..];
+        let max = nice_max(values.iter().copied().fold(0.0_f64, f64::max), 2);
         let shaded = self.presentation != RenderStyle::Native;
 
         // Dotted gridlines with max/mid labels.
@@ -210,10 +214,10 @@ impl View for BarChart {
             buf.set_string(x, axis_line_y, "─", Style::default().fg(grid_color));
         }
 
-        let count = self.values.len() as u16;
+        let count = visible_count as u16;
         let slot = (plot_width / count).max(1);
         let bar_width = slot.saturating_sub(1).max(1);
-        for (index, value) in self.values.iter().enumerate() {
+        for (index, value) in values.iter().enumerate() {
             let height = ((*value / max) * (plot_height - 1.0)).round().max(0.0) as u16;
             let x = area.x + index as u16 * slot;
             let top = plot_bottom.saturating_sub(height);
@@ -231,7 +235,7 @@ impl View for BarChart {
                 }
             }
             if label_row > 0 {
-                if let Some(label) = self.labels.get(index) {
+                if let Some(label) = self.labels.get(first_visible + index) {
                     buf.set_stringn(
                         x,
                         labels_y,

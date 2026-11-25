@@ -195,6 +195,14 @@ impl List {
         self.state.offset = offset;
     }
 
+    fn sync_child_visibility(&mut self) {
+        let first = self.state.offset;
+        let last = first.saturating_add(self.body_height());
+        for (index, child) in self.children.iter_mut().enumerate() {
+            child.set_hidden(index < first || index >= last);
+        }
+    }
+
     fn select(&mut self, index: usize) -> Outcome {
         if self.children.is_empty() {
             return Outcome::Ignored;
@@ -310,6 +318,7 @@ impl View for List {
                 &scroll,
             );
         }
+        self.sync_child_visibility();
     }
 
     fn handle_event(&mut self, event: &InputEvent, cx: &mut Context) -> Outcome {

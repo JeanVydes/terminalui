@@ -96,10 +96,25 @@ impl Stack {
         self
     }
 
+    /// Replace the children after construction.
+    pub fn set_children(&mut self, children: Vec<Node>) {
+        self.children = children;
+    }
+
     /// Cells between children. Default `0`.
     pub fn gap(mut self, gap: u16) -> Self {
         self.gap = gap;
         self
+    }
+
+    /// Change the gap between children after construction.
+    pub fn set_gap(&mut self, gap: u16) {
+        self.gap = gap;
+    }
+
+    /// Change the stack direction after construction.
+    pub fn set_direction(&mut self, direction: StackDirection) {
+        self.direction = direction;
     }
 
     /// Layout constraints, one per child. Children without a constraint
@@ -107,6 +122,11 @@ impl Stack {
     pub fn constraints(mut self, constraints: Vec<Constraint>) -> Self {
         self.constraints = constraints;
         self
+    }
+
+    /// Replace layout constraints after construction.
+    pub fn set_constraints(&mut self, constraints: Vec<Constraint>) {
+        self.constraints = constraints;
     }
 
     fn child_areas(&self, area: Rect) -> Vec<Rect> {

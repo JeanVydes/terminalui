@@ -128,6 +128,7 @@ pub struct Console {
     pub style: ConsoleStyle,
     lines: Vec<String>,
     max_visible: usize,
+    max_retained_lines: Option<usize>,
     expanded: bool,
     #[serde(skip)]
     content_width: usize,
@@ -143,6 +144,7 @@ impl Console {
             style: ConsoleStyle::default(),
             lines: Vec::new(),
             max_visible: DEFAULT_MAX_VISIBLE,
+            max_retained_lines: None,
             expanded: false,
             content_width: 0,
         }
@@ -153,6 +155,25 @@ impl Console {
         self.max_visible = rows.max(1);
         self.state.offset = self.clamp_offset(self.state.offset);
         self
+    }
+
+    /// Limit retained output lines. `None` keeps all output; the default is
+    /// unbounded for backwards compatibility.
+    pub fn with_max_retained_lines(mut self, lines: Option<usize>) -> Self {
+        self.max_retained_lines = lines.map(|limit| limit.max(1));
+        self.trim_retained_lines();
+        self
+    }
+
+    /// Change the retained-output limit at runtime. `None` keeps all output.
+    pub fn set_max_retained_lines(&mut self, lines: Option<usize>) {
+        self.max_retained_lines = lines.map(|limit| limit.max(1));
+        self.trim_retained_lines();
+    }
+
+    /// Maximum retained output lines, or `None` when output is unbounded.
+    pub fn max_retained_lines(&self) -> Option<usize> {
+        self.max_retained_lines
     }
 
     /// Choose whether every retained line is shown instead of a window.
@@ -185,6 +206,7 @@ impl Console {
     /// Replace the output lines entirely; scroll resets to the tail.
     pub fn set_lines(mut self, lines: Vec<String>) -> Self {
         self.lines = lines;
+        self.trim_retained_lines();
         self.state.offset = 0;
         self
     }
@@ -195,9 +217,10 @@ impl Console {
         self
     }
 
-    /// Append a line to the output; trims nothing.
+    /// Append a line to the output and apply the configured retention limit.
     pub fn push_line(&mut self, line: impl Into<String>) {
         self.lines.push(line.into());
+        self.trim_retained_lines();
         self.state.offset = self.clamp_offset(self.state.offset);
     }
 
@@ -214,6 +237,17 @@ impl Console {
     /// The output lines currently held.
     pub fn lines(&self) -> &[String] {
         &self.lines
+    }
+
+    fn trim_retained_lines(&mut self) {
+        let Some(limit) = self.max_retained_lines else {
+            return;
+        };
+        let excess = self.lines.len().saturating_sub(limit);
+        if excess > 0 {
+            self.lines.drain(..excess);
+            self.state.offset = 0;
+        }
     }
 
     fn wrap_width(&self) -> usize {
