@@ -6,7 +6,7 @@
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::style::Color;
 use serde::Serialize;
 
 use terminalui_animations::lerp_color;
@@ -250,16 +250,19 @@ impl Chrome {
 
 /// Draw a box for `chrome` inside `rect`. Returns the inner content rect.
 pub fn draw_box(buf: &mut Buffer, rect: Rect, chrome: &Chrome, theme: &Theme) -> Rect {
-    if let Some(gradient) = &chrome.fill_gradient {
-        for y in rect.y..rect.y + rect.height {
-            for x in rect.x..rect.x + rect.width {
+    if chrome.fill_gradient.is_some() || chrome.background.is_some() {
+        for y in rect.y..rect.y.saturating_add(rect.height) {
+            for x in rect.x..rect.x.saturating_add(rect.width) {
                 if let Some(cell) = buf.cell_mut((x, y)) {
-                    cell.set_bg(gradient.color_at(rect, x, y));
+                    let background = chrome.fill_gradient.as_ref().map_or_else(
+                        || chrome.background.unwrap_or(theme.background),
+                        |gradient| gradient.color_at(rect, x, y),
+                    );
+                    cell.reset();
+                    cell.set_bg(background);
                 }
             }
         }
-    } else if let Some(background) = chrome.background {
-        buf.set_style(rect, Style::default().bg(background));
     }
     if let Some(set) = chrome.border_set() {
         let Some(border) = chrome.border else {

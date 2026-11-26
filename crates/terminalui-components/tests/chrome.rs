@@ -162,3 +162,66 @@ fn themed_chrome_uses_theme_defaults_and_respects_overrides() {
     );
     assert_eq!(overrides.background, Some(background));
 }
+
+#[test]
+fn opaque_fills_erase_underlying_glyphs_but_transparent_boxes_preserve_them() {
+    let area = Rect::new(0, 0, 8, 4);
+    let rect = Rect::new(2, 1, 4, 2);
+    for gradient in [false, true] {
+        let mut buffer = Buffer::empty(area);
+        for y in 0..area.height {
+            buffer.set_string(0, y, "XXXXXXXX", ratatui::style::Style::default());
+        }
+        let mut chrome = Chrome::filled(Color::Black);
+        if gradient {
+            chrome.fill_gradient = Some(Gradient {
+                start: Color::Black,
+                end: Color::White,
+                angle: 0.0,
+            });
+        }
+        draw_box(&mut buffer, rect, &chrome, &theme());
+        assert_eq!(buffer[(2, 1)].symbol(), " ");
+        assert_eq!(buffer[(5, 2)].symbol(), " ");
+        assert_eq!(buffer[(1, 1)].symbol(), "X");
+        assert_eq!(buffer[(6, 1)].symbol(), "X");
+    }
+    let mut buffer = Buffer::empty(area);
+    buffer.set_string(0, 1, "XXXXXXXX", ratatui::style::Style::default());
+    draw_box(&mut buffer, rect, &Chrome::default(), &theme());
+    assert_eq!(buffer[(2, 1)].symbol(), "X");
+}
+
+#[test]
+fn floating_toast_hides_underlying_text_only_within_its_box() {
+    use terminalui_components::toast::{Toast, ToastKind};
+    use terminalui_core::{node, Tree};
+    let area = Rect::new(0, 0, 70, 12);
+    let mut buffer = Buffer::empty(area);
+    for y in 0..area.height {
+        buffer.set_string(0, y, "X".repeat(70), ratatui::style::Style::default());
+    }
+    let mut tree = Tree::new(node("toast", Toast::new(ToastKind::Info, "saved")));
+    tree.render(area, &mut buffer, &theme());
+    assert_eq!(buffer[(0, 11)].symbol(), "X");
+    assert_eq!(buffer[(40, 10)].symbol(), " ");
+}
+
+#[test]
+fn dialog_can_leave_its_surroundings_visible() {
+    use terminalui_components::dialog::Dialog;
+    use terminalui_core::{node, Tree};
+    let area = Rect::new(0, 0, 80, 20);
+    let mut buffer = Buffer::empty(area);
+    for y in 0..area.height {
+        buffer.set_string(0, y, "X".repeat(80), ratatui::style::Style::default());
+    }
+    let mut dialog = Dialog::new(Vec::new())
+        .without_overlay()
+        .with_title("Hello");
+    dialog.open();
+    let mut tree = Tree::new(node("dialog", dialog));
+    tree.render(area, &mut buffer, &theme());
+    assert_eq!(buffer[(0, 0)].symbol(), "X");
+    assert_eq!(buffer[(35, 9)].symbol(), " ");
+}

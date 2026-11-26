@@ -69,6 +69,7 @@ pub struct Dialog {
     /// Per-instance overrides; defaults match the theme.
     pub style: DialogStyle,
     children: Vec<Node>,
+    show_overlay: bool,
 }
 
 impl Dialog {
@@ -113,9 +114,16 @@ impl Dialog {
                 area: Rect::new(0, 0, 0, 0),
             },
             overlay: Overlay::new(),
+            show_overlay: true,
             style: DialogStyle::default(),
             children,
         }
+    }
+
+    /// Keep the surrounding content visible behind this dialog.
+    pub fn without_overlay(mut self) -> Self {
+        self.show_overlay = false;
+        self
     }
 
     /// Builder shorthand: replace the style.
@@ -200,7 +208,9 @@ impl View for Dialog {
         if !self.state.is_open {
             return;
         }
-        self.overlay.render(area, buf, cx, theme);
+        if self.show_overlay {
+            self.overlay.render(area, buf, cx, theme);
+        }
         let width_percent = self.style.width_percent.unwrap_or(60).clamp(1, 100) as u32;
         let content_width = ((area.width as u32 * width_percent) / 100) as u16;
         let content_width = content_width.max(10).min(area.width);
