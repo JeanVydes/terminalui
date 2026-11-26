@@ -1,48 +1,69 @@
 # terminalui
 
-Terminal UIs as a typed, composable view tree, built on ratatui.
+**A standalone Rust toolkit for terminal interfaces.** terminalui builds on
+ratatui and provides a typed view tree for layout, focus, keyboard and mouse
+input, reusable components, and animations. Use it to build terminal
+applications in Rust.
 
-## Install
+## Add the dependency
 
 ```toml
 [dependencies]
-terminalui = { git = "https://github.com/JeanVydes/terminalui" }
+terminalui = { git = "https://github.com/JeanVydes/terminalui", branch = "main" }
 ```
 
-## Example
+The facade crate re-exports the core view tree, animation effects, and
+components. You can also depend on the individual crates when you only need a
+part of the toolkit.
+
+## Build a view tree
 
 ```rust
 use terminalui::{node, Stack, Text, Tree};
 use terminalui::components::button::{Button, ButtonVariant};
 
-let root = node("root", Stack::vertical()
-    .gap(1)
-    .children(vec![
-        node("title", Text::new("terminalui")),
-        node("ok", Button::new(ButtonVariant::Primary, "OK")),
-    ]));
+let root = node(
+    "root",
+    Stack::vertical().gap(1).children(vec![
+        node("title", Text::new("My terminal app")),
+        node("confirm", Button::new(ButtonVariant::Primary, "Continue")),
+    ]),
+);
 let mut tree = Tree::new(root);
 ```
 
-## Examples
+Render the tree from your ratatui frame and forward input events to it. The
+tree handles layout, focus order, and dispatch to the view under the cursor.
+Your application owns the event loop and its domain state.
 
-All examples ship with the repo and run with `cargo run --example <name>`:
+## Components and animations
 
-```console
-counter    # minimal interactive counter
-meter      # a custom view written against the View trait
-form       # required-field form with submit handling
-dialog     # modal confirmation with a second view tree
-animation  # entrance animation with Effect
+The library includes inputs, buttons, forms, tables, menus, dialogs, overlays,
+toasts, progress indicators, charts, scroll views, and other terminal
+components. Compose them with the same view tree. Stateful components expose
+methods for updating their displayed data between frames.
+
+Use the animation crate for transitions and effects that operate on ratatui
+buffers. Tick views and animations from your application loop.
+
+## Runnable examples
+
+Run an example from the workspace root with:
+
+```sh
+cargo run -p terminalui --example counter
 ```
 
-## Docs
+Examples include a counter, a custom view, a form, a dialog, and an entrance
+animation.
 
-- `docs/quickstart.md`: from a git dependency to a running app.
-- `docs/use-cases.md`: recipes for dashboards, forms, modals, wizards, toasts and more.
-- `docs/custom-views.md`: implement the `View` trait to add your own views.
-- `docs/agents.md`: machine-readable tree inspection for agents and tools.
-- `CONTRIBUTING.md`: verification suite, component conventions, style.
+## Documentation
+
+- [Quickstart](docs/quickstart.md)
+- [Use cases](docs/use-cases.md)
+- [Custom views](docs/custom-views.md)
+- [Tree inspection for agents and tools](docs/agents.md)
+- [Contributing](CONTRIBUTING.md)
 
 Requires Rust 1.94 or newer.
 
