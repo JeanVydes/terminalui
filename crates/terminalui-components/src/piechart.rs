@@ -223,7 +223,16 @@ impl View for PieChart {
         }
         let body_y = area.y.saturating_add(caption_height);
         let body_height = area.height.saturating_sub(caption_height);
-        if body_height == 0 || self.slices.is_empty() {
+        if self.slices.is_empty() {
+            super::chart_empty::paint(
+                Rect::new(area.x, body_y, area.width, body_height),
+                "No data",
+                buf,
+                theme,
+            );
+            return;
+        }
+        if body_height == 0 {
             return;
         }
 

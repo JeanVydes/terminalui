@@ -168,7 +168,21 @@ impl View for BarChart {
             row(&mut self.children, caption, Align::Left, 2, buf, cx, theme);
         }
         let label_row = u16::from(!self.labels.is_empty() && area.height >= 8);
-        if self.values.is_empty() || area.height < 4 || area.width < 12 {
+        if self.values.is_empty() {
+            super::chart_empty::paint(
+                Rect::new(
+                    area.x,
+                    area.y.saturating_add(caption_height),
+                    area.width,
+                    area.height.saturating_sub(caption_height),
+                ),
+                "No data",
+                buf,
+                theme,
+            );
+            return;
+        }
+        if area.height < 4 || area.width < 12 {
             return;
         }
         let bar_color = self.style.bar.unwrap_or(theme.primary);

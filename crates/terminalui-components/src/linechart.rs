@@ -2,6 +2,7 @@
 //! where the line, grid and labels land. Compose caption views (symbol,
 //! badges) as children; they render in the row above the plot.
 
+use crossterm::event::MouseEventKind;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
@@ -15,7 +16,8 @@ use terminalui_core::{Context, Node, Outcome, View};
 
 use super::axis::{format_value, nice_domain};
 use super::layout::{row, Align};
-use super::presentation::{RenderStyle, StyleTuning};
+use super::presentation::{Presentation, RenderStyle, StyleTuning};
+use unicode_width::UnicodeWidthStr;
 
 const MAX_HISTORY: usize = 240;
 const AXIS_WIDTH: u16 = 8;
@@ -59,6 +61,10 @@ pub struct LineChart {
     /// Caption row, composed by the host.
     children: Vec<Node>,
     series: Vec<Option<f64>>,
+    x_labels: Vec<String>,
+    plot_area: Rect,
+    sample_columns: Vec<Option<usize>>,
+    hovered: Option<(usize, u16)>,
     domain: Option<(f64, f64)>,
 }
 
@@ -75,6 +81,10 @@ impl LineChart {
             tuning: StyleTuning::default(),
             children: Vec::new(),
             series: Vec::new(),
+            x_labels: Vec::new(),
+            plot_area: Rect::default(),
+            sample_columns: Vec::new(),
+            hovered: None,
             domain: None,
         }
     }
@@ -103,6 +113,17 @@ impl LineChart {
         self
     }
 
+    /// Builder shorthand for x-axis labels shown in hover readouts.
+    pub fn with_x_labels(mut self, labels: Vec<String>) -> Self {
+        self.set_x_labels(labels);
+        self
+    }
+
+    /// Replaces x-axis labels aligned with the samples. Missing labels fall back to sample numbers.
+    pub fn set_x_labels(&mut self, labels: Vec<String>) {
+        self.x_labels = labels;
+    }
+
     /// Fix the y range. Auto-fits the visible series when unset.
     pub fn with_domain(mut self, low: f64, high: f64) -> Self {
         if low.is_finite() && high.is_finite() && high > low {
@@ -121,6 +142,7 @@ impl LineChart {
             series.drain(..series.len() - MAX_HISTORY);
         }
         self.series = series.into_iter().map(Some).collect();
+        self.hovered = None;
     }
 
     /// Replace the samples while preserving intentional gaps in the timeline.
@@ -133,6 +155,7 @@ impl LineChart {
             series.drain(..series.len() - MAX_HISTORY);
         }
         self.series = series;
+        self.hovered = None;
     }
 
     /// Append one value, dropping the oldest when the history is full.
@@ -220,18 +243,41 @@ impl View for LineChart {
             return;
         }
         self.state.area = area;
+        self.plot_area = Rect::default();
+        self.sample_columns.clear();
         buf.set_style(area, Style::default().bg(theme.background));
         let caption_height = u16::from(!self.children.is_empty());
         if caption_height > 0 {
             let caption = Rect::new(area.x, area.y, area.width, 1);
             row(&mut self.children, caption, Align::Left, 2, buf, cx, theme);
         }
-        if area.width < 12 || area.height < 5 || self.series.iter().all(Option::is_none) {
+        if self.series.iter().all(Option::is_none) {
+            super::chart_empty::paint(
+                Rect::new(
+                    area.x,
+                    area.y.saturating_add(caption_height),
+                    area.width,
+                    area.height.saturating_sub(caption_height),
+                ),
+                "No data",
+                buf,
+                theme,
+            );
+            return;
+        }
+        if area.width < 12 || area.height < 5 {
             return;
         }
         let line_color = self.style.line.unwrap_or(theme.accent);
         let grid_color = self.style.grid.unwrap_or(theme.muted);
         let label_color = self.style.label.unwrap_or(theme.muted);
+        let glyphs = self.presentation.resolve(Presentation {
+            grid: "·",
+            wick: "│",
+            doji: "●",
+            body: "●",
+            live: "╌",
+        });
 
         let plot_top = area.y + caption_height + 1;
         let axis_y = area.y + area.height.saturating_sub(1);
@@ -242,6 +288,12 @@ impl View for LineChart {
         let plot_bottom = axis_line_y.saturating_sub(1);
         let plot_height = (plot_bottom - plot_top + 1).max(1) as f64;
         let plot_width = area.width.saturating_sub(AXIS_WIDTH + 1).max(1);
+        self.plot_area = Rect::new(
+            area.x,
+            plot_top,
+            plot_width,
+            plot_bottom.saturating_sub(plot_top).saturating_add(1),
+        );
         let axis_x = area.x + plot_width + 1;
         let (low, high) = self.domain();
         let range = (high - low).max(f64::EPSILON);
@@ -260,7 +312,7 @@ impl View for LineChart {
         for value in &axis {
             let y = to_y(*value).clamp(plot_top, plot_bottom);
             for x in (area.x..area.x + plot_width).step_by(3) {
-                buf.set_string(x, y, "·", Style::default().fg(grid_color));
+                buf.set_string(x, y, glyphs.grid, Style::default().fg(grid_color));
             }
         }
         // Highest value stays at the top, lowest at the bottom.
@@ -280,32 +332,55 @@ impl View for LineChart {
             buf.set_string(axis_x, y, "│", Style::default().fg(grid_color));
         }
         for x in area.x..area.x + plot_width + 1 {
-            buf.set_string(x, axis_line_y, "─", Style::default().fg(grid_color));
+            buf.set_string(
+                x,
+                axis_line_y,
+                self.presentation.hairline().0,
+                Style::default().fg(grid_color),
+            );
         }
 
         // Sampled polyline: one point per column.
         let shaded = self.presentation != RenderStyle::Native;
         let sample_count = self.series.len();
         let mut previous_y: Option<u16> = None;
+        let mut sample_columns = Vec::with_capacity(usize::from(plot_width));
         for column in 0..plot_width {
             let start = column as usize * sample_count / plot_width as usize;
             let end = ((column as usize + 1) * sample_count / plot_width as usize)
                 .max(start + 1)
                 .min(sample_count);
             let slice = &self.series[start..end];
+            let sample_index = slice
+                .iter()
+                .rposition(Option::is_some)
+                .map(|offset| start + offset);
             let values: Vec<_> = slice.iter().flatten().copied().collect();
             let Some(last) = values.last().copied() else {
                 previous_y = None;
+                sample_columns.push(None);
                 continue;
             };
             let minimum = to_y(values.iter().copied().fold(f64::INFINITY, f64::min));
             let maximum = to_y(values.iter().copied().fold(f64::NEG_INFINITY, f64::max));
             let y = to_y(last);
             if let Some(previous_y) = previous_y {
-                connect(buf, area.x + column, previous_y, y, line_color);
+                connect(
+                    buf,
+                    area.x + column,
+                    previous_y,
+                    y,
+                    line_color,
+                    self.presentation.hairline().1,
+                );
             }
             for row in minimum.min(maximum)..=minimum.max(maximum) {
-                buf.set_string(area.x + column, row, "│", Style::default().fg(line_color));
+                buf.set_string(
+                    area.x + column,
+                    row,
+                    glyphs.wick,
+                    Style::default().fg(line_color),
+                );
             }
             let glyph = if shaded {
                 let intensity = ((last - low) / range).clamp(0.0, 1.0) as f32;
@@ -315,7 +390,9 @@ impl View for LineChart {
             };
             buf.set_string(area.x + column, y, glyph, Style::default().fg(line_color));
             previous_y = Some(y);
+            sample_columns.push(sample_index);
         }
+        self.sample_columns = sample_columns;
 
         // Latest value tag on the right axis.
         let Some(latest) = self.series.iter().rev().flatten().next().copied() else {
@@ -332,16 +409,112 @@ impl View for LineChart {
                 .fg(theme.background)
                 .bg(self.style.latest.unwrap_or(line_color)),
         );
+        paint_hover(self, buf, theme, &to_y, plot_top, plot_bottom);
     }
 
-    fn handle_event(&mut self, _event: &InputEvent, _cx: &mut Context) -> Outcome {
-        Outcome::Ignored
+    fn handle_event(&mut self, event: &InputEvent, _cx: &mut Context) -> Outcome {
+        let InputEvent::Mouse(mouse) = event else {
+            return Outcome::Ignored;
+        };
+        if mouse.kind != MouseEventKind::Moved {
+            return Outcome::Ignored;
+        }
+        let plot = self.plot_area;
+        let next = if mouse.column >= plot.x
+            && mouse.column < plot.x.saturating_add(plot.width)
+            && mouse.row >= plot.y
+            && mouse.row < plot.y.saturating_add(plot.height)
+        {
+            let column = mouse.column - plot.x;
+            self.sample_columns
+                .get(usize::from(column))
+                .copied()
+                .flatten()
+                .map(|sample| (sample, column))
+        } else {
+            None
+        };
+        if next == self.hovered {
+            return Outcome::Ignored;
+        }
+        let had_hover = self.hovered.is_some();
+        self.hovered = next;
+        if next.is_some() || had_hover {
+            Outcome::Consumed
+        } else {
+            Outcome::Ignored
+        }
     }
+}
+
+fn paint_hover(
+    chart: &LineChart,
+    buf: &mut Buffer,
+    theme: &Theme,
+    to_y: &impl Fn(f64) -> u16,
+    plot_top: u16,
+    plot_bottom: u16,
+) {
+    let Some((sample, column)) = chart.hovered else {
+        return;
+    };
+    let Some(value) = chart.series.get(sample).copied().flatten() else {
+        return;
+    };
+    let x = chart.plot_area.x.saturating_add(column);
+    let y = to_y(value).clamp(plot_top, plot_bottom);
+    let glyphs = chart.presentation.resolve(Presentation {
+        grid: "·",
+        wick: "│",
+        doji: "●",
+        body: "●",
+        live: "╌",
+    });
+    let crosshair = Style::default().fg(theme.primary);
+    for row in plot_top..=plot_bottom {
+        buf.set_string(x, row, chart.presentation.hairline().1, crosshair);
+    }
+    buf.set_string(x, y, glyphs.doji, crosshair);
+
+    let label = chart
+        .x_labels
+        .get(sample)
+        .cloned()
+        .unwrap_or_else(|| format!("sample {}", sample + 1));
+    let text = format!("{label}  {}", format_value(value));
+    let text_width = UnicodeWidthStr::width(text.as_str());
+    let width = u16::try_from(text_width.saturating_add(2))
+        .unwrap_or(u16::MAX)
+        .min(chart.plot_area.width);
+    if width < 4 {
+        return;
+    }
+    let right = chart.plot_area.x.saturating_add(chart.plot_area.width);
+    let tooltip_x = if x.saturating_add(width).saturating_add(1) < right {
+        x.saturating_add(1)
+    } else {
+        x.saturating_sub(width)
+    };
+    let tooltip_y = if y > plot_top {
+        y - 1
+    } else {
+        y.saturating_add(1).min(plot_bottom)
+    };
+    let tooltip = Rect::new(tooltip_x, tooltip_y, width, 1);
+    let tooltip_style = Style::default().fg(theme.foreground).bg(theme.secondary);
+    buf.set_style(tooltip, Style::default().bg(theme.secondary));
+    buf.set_stringn(
+        tooltip_x.saturating_add(1),
+        tooltip_y,
+        &text,
+        usize::from(width.saturating_sub(2)),
+        tooltip_style,
+    );
 }
 
 /// Stepped connector between the previous point row and `y`, drawn in the
 /// new column so the step reads as a staircase.
-fn connect(buf: &mut Buffer, column: u16, previous_y: u16, y: u16, color: Color) {
+fn connect(buf: &mut Buffer, column: u16, previous_y: u16, y: u16, color: Color, glyph: &str) {
     let style = Style::default().fg(color);
     let (from, to) = if previous_y <= y {
         (previous_y + 1, y + 1)
@@ -349,6 +522,6 @@ fn connect(buf: &mut Buffer, column: u16, previous_y: u16, y: u16, color: Color)
         (y, previous_y)
     };
     for row in from..to {
-        buf.set_string(column, row, "│", style);
+        buf.set_string(column, row, glyph, style);
     }
 }

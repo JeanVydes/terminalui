@@ -36,6 +36,7 @@
 //! fields and composed children. [`Tree::inspect_outline`](terminalui_core::Tree::inspect_outline)
 //! gives a compact one-line-per-node outline for agents and logs.
 
+mod chart_empty;
 pub mod chrome;
 pub mod cursor;
 mod layout;

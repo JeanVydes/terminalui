@@ -9,6 +9,7 @@ use terminalui_core::input::InputEvent;
 use terminalui_core::outline::quoted;
 use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
+use unicode_width::UnicodeWidthStr;
 
 use super::axis::{format_value, nice_max};
 use super::layout::{row, Align};
@@ -139,7 +140,12 @@ pub struct CandleChart {
     /// every 10 candles). When unset the axis stays unlabeled.
     #[serde(serialize_with = "serialize_x_label")]
     x_label: Option<Box<dyn Fn(usize) -> String>>,
+    #[serde(skip)]
+    hover_label: Option<Box<dyn Fn(usize) -> String>>,
     series: Vec<Candle>,
+    hover_plot: Rect,
+    visible_range: (usize, usize),
+    hovered: Option<usize>,
 }
 
 impl CandleChart {
@@ -158,7 +164,11 @@ impl CandleChart {
             tuning: StyleTuning::default(),
             children: Vec::new(),
             x_label: None,
+            hover_label: None,
             series: Vec::new(),
+            hover_plot: Rect::default(),
+            visible_range: (0, 0),
+            hovered: None,
         }
     }
 
@@ -198,6 +208,11 @@ impl CandleChart {
         self.x_label = Some(Box::new(label));
     }
 
+    /// Sets the full label used by the pointer readout, independently of compact axis labels.
+    pub fn set_x_hover_label(&mut self, label: impl Fn(usize) -> String + 'static) {
+        self.hover_label = Some(Box::new(label));
+    }
+
     /// Replace the whole series. Anchors the view to the live edge.
     pub fn set_series(&mut self, series: Vec<Candle>) {
         let mut series: Vec<_> = series.into_iter().filter_map(Candle::normalized).collect();
@@ -206,6 +221,7 @@ impl CandleChart {
         }
         self.series = series;
         self.state.scroll_back = 0;
+        self.hovered = None;
     }
 
     /// Replaces the forming (last) candle in place. No-op on an empty series
@@ -325,13 +341,28 @@ impl View for CandleChart {
     fn render(&mut self, area: Rect, buf: &mut Buffer, cx: &mut Context, theme: &Theme) {
         self.state.area = area;
         self.state.focused = cx.is_focused();
+        self.hover_plot = Rect::default();
         buf.set_style(area, Style::default().bg(theme.background));
         let caption_height = u16::from(!self.children.is_empty());
         if caption_height > 0 {
             let caption = Rect::new(area.x, area.y, area.width, 1);
             row(&mut self.children, caption, Align::Left, 2, buf, cx, theme);
         }
-        if area.width < 12 || area.height < 6 || self.series.is_empty() {
+        if self.series.is_empty() {
+            super::chart_empty::paint(
+                Rect::new(
+                    area.x,
+                    area.y.saturating_add(caption_height),
+                    area.width,
+                    area.height.saturating_sub(caption_height),
+                ),
+                "No data",
+                buf,
+                theme,
+            );
+            return;
+        }
+        if area.width < 12 || area.height < 6 {
             return;
         }
         let up = self.style.up.unwrap_or(theme.success);
@@ -400,6 +431,13 @@ impl View for CandleChart {
         if plot_bottom < plot_top {
             return;
         }
+        self.hover_plot = Rect::new(
+            area.x,
+            plot_top,
+            plot_width,
+            plot_bottom.saturating_sub(plot_top).saturating_add(1),
+        );
+        self.visible_range = (start, end);
         let plot_height = (plot_bottom - plot_top + 1) as f64;
         let to_y = |value: f64| -> u16 {
             let normalized = ((value - low) / range).clamp(0.0, 1.0);
@@ -605,6 +643,7 @@ impl View for CandleChart {
             );
             buf.set_string(axis_x, live_y, "◄", Style::default().fg(live_color));
         }
+        paint_hover(self, buf, theme, &to_y, plot_top, plot_bottom, cell_width);
     }
 
     fn handle_event(&mut self, event: &InputEvent, cx: &mut Context) -> Outcome {
@@ -613,6 +652,31 @@ impl View for CandleChart {
         // price axis zooms the range, the time axis zooms the candles.
         // Anything outside our area is left for the rest of the tree.
         if let InputEvent::Mouse(mouse) = event {
+            if mouse.kind == MouseEventKind::Moved {
+                let plot = self.hover_plot;
+                let next = if mouse.column >= plot.x
+                    && mouse.column < plot.x.saturating_add(plot.width)
+                    && mouse.row >= plot.y
+                    && mouse.row < plot.y.saturating_add(plot.height)
+                {
+                    let cell_width = self.cell_width();
+                    let visible = usize::from(mouse.column.saturating_sub(plot.x) / cell_width);
+                    let index = self.visible_range.0.saturating_add(visible);
+                    (index < self.visible_range.1).then_some(index)
+                } else {
+                    None
+                };
+                if next == self.hovered {
+                    return Outcome::Ignored;
+                }
+                let had_hover = self.hovered.is_some();
+                self.hovered = next;
+                return if next.is_some() || had_hover {
+                    Outcome::Consumed
+                } else {
+                    Outcome::Ignored
+                };
+            }
             if matches!(
                 mouse.kind,
                 MouseEventKind::ScrollUp | MouseEventKind::ScrollDown
@@ -672,4 +736,79 @@ impl View for CandleChart {
     fn activate(&mut self, _cx: &Context) -> bool {
         true
     }
+}
+
+fn paint_hover(
+    chart: &CandleChart,
+    buf: &mut Buffer,
+    theme: &Theme,
+    to_y: &impl Fn(f64) -> u16,
+    plot_top: u16,
+    plot_bottom: u16,
+    cell_width: u16,
+) {
+    let Some(index) = chart
+        .hovered
+        .filter(|index| *index >= chart.visible_range.0 && *index < chart.visible_range.1)
+    else {
+        return;
+    };
+    let Some(candle) = chart.series.get(index).copied() else {
+        return;
+    };
+    let visible = index.saturating_sub(chart.visible_range.0);
+    let x = chart
+        .hover_plot
+        .x
+        .saturating_add(
+            u16::try_from(visible)
+                .unwrap_or(u16::MAX)
+                .saturating_mul(cell_width),
+        )
+        .saturating_add(cell_width / 2);
+    let y = to_y(candle.close).clamp(plot_top, plot_bottom);
+    let glyphs = chart.presentation.resolve(NATIVE);
+    let crosshair = Style::default().fg(theme.primary);
+    for row in plot_top..=plot_bottom {
+        buf.set_string(x, row, chart.presentation.hairline().1, crosshair);
+    }
+    buf.set_string(x, y, glyphs.doji, crosshair);
+    let label = chart
+        .hover_label
+        .as_ref()
+        .or(chart.x_label.as_ref())
+        .map_or_else(|| format!("candle {}", index + 1), |label| label(index));
+    let text = format!(
+        "{label}  O {} H {} L {} C {}",
+        format_value(candle.open),
+        format_value(candle.high),
+        format_value(candle.low),
+        format_value(candle.close),
+    );
+    let width = u16::try_from(UnicodeWidthStr::width(text.as_str()).saturating_add(2))
+        .unwrap_or(u16::MAX)
+        .min(chart.hover_plot.width);
+    if width < 8 {
+        return;
+    }
+    let right = chart.hover_plot.x.saturating_add(chart.hover_plot.width);
+    let tooltip_x = if x.saturating_add(width).saturating_add(1) < right {
+        x.saturating_add(1)
+    } else {
+        x.saturating_sub(width)
+    };
+    let tooltip_y = if y > plot_top {
+        y - 1
+    } else {
+        y.saturating_add(1).min(plot_bottom)
+    };
+    let tooltip = Rect::new(tooltip_x, tooltip_y, width, 1);
+    buf.set_style(tooltip, Style::default().bg(theme.secondary));
+    buf.set_stringn(
+        tooltip_x.saturating_add(1),
+        tooltip_y,
+        &text,
+        usize::from(width.saturating_sub(2)),
+        Style::default().fg(theme.foreground).bg(theme.secondary),
+    );
 }
