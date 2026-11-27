@@ -19,12 +19,14 @@ pub(super) fn handle_event(chart: &mut LineChart, event: &InputEvent) -> Outcome
         return Outcome::Ignored;
     }
     let plot = chart.plot_area;
-    let next = if mouse.column >= plot.x
-        && mouse.column < plot.x.saturating_add(plot.width)
-        && mouse.row >= plot.y
-        && mouse.row < plot.y.saturating_add(plot.height)
+    let column = i32::from(mouse.column) - chart.pointer_origin.0;
+    let row = i32::from(mouse.row) - chart.pointer_origin.1;
+    let next = if column >= i32::from(plot.x)
+        && column < i32::from(plot.x.saturating_add(plot.width))
+        && row >= i32::from(plot.y)
+        && row < i32::from(plot.y.saturating_add(plot.height))
     {
-        let column = mouse.column - plot.x;
+        let column = u16::try_from(column).unwrap_or_default() - plot.x;
         chart
             .sample_columns
             .get(usize::from(column))

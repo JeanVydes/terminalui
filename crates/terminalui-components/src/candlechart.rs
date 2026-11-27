@@ -148,6 +148,7 @@ pub struct CandleChart {
     hover_plot: Rect,
     visible_range: (usize, usize),
     hovered: Option<usize>,
+    pointer_origin: (i32, i32),
 }
 
 impl CandleChart {
@@ -171,6 +172,7 @@ impl CandleChart {
             hover_plot: Rect::default(),
             visible_range: (0, 0),
             hovered: None,
+            pointer_origin: (0, 0),
         }
     }
 
@@ -213,6 +215,12 @@ impl CandleChart {
     /// Sets the full label used by the pointer readout, independently of compact axis labels.
     pub fn set_x_hover_label(&mut self, label: impl Fn(usize) -> String + 'static) {
         self.hover_label = Some(Box::new(label));
+    }
+
+    /// Sets the screen origin of this chart when it is rendered into an
+    /// off-screen surface that is later translated before display.
+    pub fn set_pointer_origin(&mut self, x: i32, y: i32) {
+        self.pointer_origin = (x, y);
     }
 
     /// Replace the whole series. Anchors the view to the live edge.

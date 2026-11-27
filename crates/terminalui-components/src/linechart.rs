@@ -66,6 +66,7 @@ pub struct LineChart {
     plot_area: Rect,
     sample_columns: Vec<Option<usize>>,
     hovered: Option<(usize, u16)>,
+    pointer_origin: (i32, i32),
     domain: Option<(f64, f64)>,
 }
 
@@ -86,6 +87,7 @@ impl LineChart {
             plot_area: Rect::default(),
             sample_columns: Vec::new(),
             hovered: None,
+            pointer_origin: (0, 0),
             domain: None,
         }
     }
@@ -123,6 +125,12 @@ impl LineChart {
     /// Replaces x-axis labels aligned with the samples. Missing labels fall back to sample numbers.
     pub fn set_x_labels(&mut self, labels: Vec<String>) {
         self.x_labels = labels;
+    }
+
+    /// Sets the screen origin of this chart when it is rendered into an
+    /// off-screen surface that is later translated before display.
+    pub fn set_pointer_origin(&mut self, x: i32, y: i32) {
+        self.pointer_origin = (x, y);
     }
 
     /// Fix the y range. Auto-fits the visible series when unset.

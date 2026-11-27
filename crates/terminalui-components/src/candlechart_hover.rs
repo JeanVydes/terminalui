@@ -11,12 +11,15 @@ use super::{CandleChart, NATIVE};
 
 pub(super) fn handle_move(chart: &mut CandleChart, mouse: MouseEvent) -> Outcome {
     let plot = chart.hover_plot;
-    let next = if mouse.column >= plot.x
-        && mouse.column < plot.x.saturating_add(plot.width)
-        && mouse.row >= plot.y
-        && mouse.row < plot.y.saturating_add(plot.height)
+    let column = i32::from(mouse.column) - chart.pointer_origin.0;
+    let row = i32::from(mouse.row) - chart.pointer_origin.1;
+    let next = if column >= i32::from(plot.x)
+        && column < i32::from(plot.x.saturating_add(plot.width))
+        && row >= i32::from(plot.y)
+        && row < i32::from(plot.y.saturating_add(plot.height))
     {
-        let visible = usize::from(mouse.column.saturating_sub(plot.x) / chart.cell_width());
+        let column = u16::try_from(column).unwrap_or_default();
+        let visible = usize::from(column.saturating_sub(plot.x) / chart.cell_width());
         let index = chart.visible_range.0.saturating_add(visible);
         (index < chart.visible_range.1).then_some(index)
     } else {

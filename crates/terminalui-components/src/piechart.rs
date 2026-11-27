@@ -2,6 +2,7 @@
 
 use std::any::Any;
 
+use crossterm::event::MouseEventKind;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
@@ -10,7 +11,9 @@ use serde::Serialize;
 use terminalui_core::input::InputEvent;
 use terminalui_core::theme::Theme;
 use terminalui_core::{Context, Node, Outcome, View};
+use unicode_width::UnicodeWidthStr;
 
+use super::axis::format_value;
 use super::layout::{row, Align};
 use super::presentation::{DotSize, RenderStyle, StyleTuning};
 
@@ -77,6 +80,8 @@ pub struct PieChart {
     slices: Vec<PieSlice>,
     presentation: RenderStyle,
     tuning: StyleTuning,
+    pointer_origin: (i32, i32),
+    hovered: Option<(usize, u16, u16)>,
 }
 
 impl PieChart {
@@ -91,6 +96,8 @@ impl PieChart {
             slices: Vec::new(),
             presentation: RenderStyle::Native,
             tuning: StyleTuning::default(),
+            pointer_origin: (0, 0),
+            hovered: None,
         }
     }
 
@@ -100,6 +107,13 @@ impl PieChart {
             .into_iter()
             .map(|slice| PieSlice::new(slice.label, slice.value, slice.color))
             .collect();
+        self.hovered = None;
+    }
+
+    /// Sets the screen origin of this chart when it is rendered into an
+    /// off-screen surface that is later translated before display.
+    pub fn set_pointer_origin(&mut self, x: i32, y: i32) {
+        self.pointer_origin = (x, y);
     }
 
     /// Builder shorthand for replacing all categories.
@@ -254,14 +268,124 @@ impl View for PieChart {
             buf,
             theme,
         );
+        self.paint_hover(buf, theme);
     }
 
-    fn handle_event(&mut self, _event: &InputEvent, _cx: &mut Context) -> Outcome {
-        Outcome::Ignored
+    fn handle_event(&mut self, event: &InputEvent, _cx: &mut Context) -> Outcome {
+        let InputEvent::Mouse(mouse) = event else {
+            return Outcome::Ignored;
+        };
+        if mouse.kind != MouseEventKind::Moved {
+            return Outcome::Ignored;
+        }
+        let area = self.state.area;
+        let x = i32::from(mouse.column) - self.pointer_origin.0;
+        let y = i32::from(mouse.row) - self.pointer_origin.1;
+        let next = self.slice_at(area, x, y);
+        let next = next.map(|index| (index, x as u16, y as u16));
+        if next == self.hovered {
+            return Outcome::Ignored;
+        }
+        let had_hover = self.hovered.is_some();
+        self.hovered = next;
+        if next.is_some() || had_hover {
+            Outcome::Consumed
+        } else {
+            Outcome::Ignored
+        }
     }
 }
 
 impl PieChart {
+    fn slice_at(&self, area: Rect, x: i32, y: i32) -> Option<usize> {
+        if self.slices.is_empty() || area.width == 0 || area.height == 0 {
+            return None;
+        }
+        let caption_height = u16::from(!self.children.is_empty());
+        let body_y = area.y.saturating_add(caption_height);
+        let body_height = area.height.saturating_sub(caption_height);
+        let circle_width = body_height
+            .saturating_mul(2)
+            .min(area.width.saturating_sub(area.width / 3));
+        let circle_height = body_height.min(circle_width.div_ceil(2));
+        if circle_width == 0 || circle_height == 0 {
+            return None;
+        }
+        let center_x = f64::from(area.x) + f64::from(circle_width) / 2.0;
+        let center_y = f64::from(body_y) * 2.0 + f64::from(circle_height);
+        let diameter = f64::from(circle_width.min(circle_height.saturating_mul(2)));
+        let radius = diameter / 2.0;
+        let dx = x as f64 + 0.5 - center_x;
+        let dy = y as f64 * 2.0 + 1.0 - center_y;
+        if radius == 0.0 || dx.hypot(dy) > radius {
+            return None;
+        }
+        let scale = self.scale();
+        let total = self.total_scaled(scale);
+        if total <= 0.0 {
+            return None;
+        }
+        let angle = dy.atan2(dx).rem_euclid(std::f64::consts::TAU);
+        let position = angle / std::f64::consts::TAU * total;
+        let mut cumulative = 0.0;
+        self.slices.iter().position(|slice| {
+            cumulative += slice.value / scale;
+            slice.value > 0.0 && position < cumulative
+        })
+    }
+
+    fn paint_hover(&self, buf: &mut Buffer, theme: &Theme) {
+        let Some((index, pointer_x, pointer_y)) = self.hovered else {
+            return;
+        };
+        let Some(slice) = self.slices.get(index) else {
+            return;
+        };
+        let scale = self.scale();
+        let total = self.total_scaled(scale);
+        if total <= 0.0 {
+            return;
+        }
+        let percent = slice.value / scale / total * 100.0;
+        let text = format!(
+            "{} · {} · {:.1}%",
+            slice.label,
+            format_value(slice.value),
+            percent
+        );
+        let text_width = UnicodeWidthStr::width(text.as_str());
+        let width = u16::try_from(text_width.saturating_add(2))
+            .unwrap_or(u16::MAX)
+            .min(self.state.area.width);
+        if width < 6 {
+            return;
+        }
+        let area = self.state.area;
+        let x = pointer_x;
+        let y = pointer_y;
+        let right = area.right();
+        let tooltip_x = if x.saturating_add(width).saturating_add(1) < right {
+            x.saturating_add(1)
+        } else {
+            x.saturating_sub(width)
+        }
+        .clamp(area.x, right.saturating_sub(width));
+        let tooltip_y = if y.saturating_add(1) < area.bottom() {
+            y.saturating_add(1)
+        } else {
+            y.saturating_sub(1).max(area.y)
+        };
+        let tooltip = Rect::new(tooltip_x, tooltip_y, width, 1);
+        buf.set_style(tooltip, Style::default().bg(theme.secondary));
+        buf.set_stringn(
+            tooltip_x.saturating_add(1),
+            tooltip_y,
+            &text,
+            usize::from(width.saturating_sub(2)),
+            Style::default().fg(theme.foreground).bg(theme.secondary),
+        );
+    }
+
     fn paint_circle(&self, area: Rect, buf: &mut Buffer, theme: &Theme) {
         if area.width == 0 || area.height == 0 {
             return;
